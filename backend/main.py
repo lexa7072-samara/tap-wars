@@ -1,10 +1,20 @@
+import json
+import asyncio
+import urllib.parse
+import hashlib
+import hmac
+from typing import Dict, List
+from pathlib import Path
+from dotenv import load_dotenv
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pathlib import Path
-import os
-from dotenv import load_dotenv
+from pydantic import BaseModel
+
+from database import Database
+from game_engine import GameEngine
 
 load_dotenv()
 
@@ -14,9 +24,11 @@ app = FastAPI(title="Tap Wars API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://твой-username.github.io",  # ← ЗАМЕНИ
+        "https://твой-username.github.io",
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
+        "https://*.t.me",  # Для Telegram Mini App
+        "https://t.me"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -24,12 +36,19 @@ app.add_middleware(
 )
 
 # Подключаем статические файлы (frontend)
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
 # Инициализация
 db = Database()
 game_engine = GameEngine(db)
-active_connections: Dict[int, List[WebSocket]] = {}  # {game_id: [websockets]}
+active_connections: Dict[int, List[WebSocket]] = {}
+
+# ========== МОДЕЛИ ==========
+
+class UserAuth(BaseModel):
+    init_data: str
+
+# ========== ИНИЦИАЛИЗАЦИЯ ==========
 
 @app.on_event("startup")
 async def startup():
@@ -39,28 +58,17 @@ async def startup():
 
 # ========== REST API ==========
 
-class UserAuth(BaseModel):
-    init_data: str  # Telegram WebApp initData
-
 @app.post("/api/auth")
 async def authenticate(auth: UserAuth):
     """Авторизация через Telegram WebApp"""
-    # Валидация init_data (упрощенно)
-    import urllib.parse
-    import hashlib
-    import hmac
-    
-    # Парсим init_data
     data = dict(urllib.parse.parse_qsl(auth.init_data))
     
-    # В проде тут должна быть полная валидация через bot token
     user_data = json.loads(data.get('user', '{}'))
     user_id = user_data.get('id')
     
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid auth data")
     
-    # Добавляем пользователя в БД
     await db.add_user(
         user_id=user_id,
         username=user_data.get('username', 'Anonymous'),
@@ -68,13 +76,12 @@ async def authenticate(auth: UserAuth):
         referred_by=None
     )
     
-    # Получаем данные пользователя
     user = await db.get_user(user_id)
     
     return {
         "success": True,
         "user": user,
-        "token": f"token_{user_id}"  # В проде используй JWT
+        "token": f"token_{user_id}"
     }
 
 @app.get("/api/game/current")
@@ -90,7 +97,7 @@ async def get_current_game():
     return {
         "game_id": game["game_id"],
         "players_count": players_count,
-        "players_needed": 50,  # Из config
+        "players_needed": 50,
         "ticket_price": 50,
         "status": game["status"]
     }
@@ -103,13 +110,11 @@ async def join_game(game_id: int, user_id: int):
     if success:
         players_count = await db.get_game_players_count(game_id)
         
-        # Оповещаем всех через WebSocket
         await broadcast_to_game(game_id, {
             "type": "player_joined",
             "players_count": players_count
         })
         
-        # Проверяем старт игры
         if await game_engine.check_game_start(game_id):
             await broadcast_to_game(game_id, {
                 "type": "game_starting",
@@ -136,14 +141,12 @@ async def get_user_data(user_id: int):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-# ========== WEBSOCKET (РЕАЛ-ТАЙМ ИГРА) ==========
+# ========== WEBSOCKET ==========
 
 @app.websocket("/ws/game/{game_id}/{user_id}")
 async def websocket_game(websocket: WebSocket, game_id: int, user_id: int):
-    """WebSocket для игры в реальном времени"""
     await websocket.accept()
     
-    # Добавляем соединение
     if game_id not in active_connections:
         active_connections[game_id] = []
     active_connections[game_id].append(websocket)
@@ -153,17 +156,14 @@ async def websocket_game(websocket: WebSocket, game_id: int, user_id: int):
             data = await websocket.receive_json()
             
             if data["type"] == "tap":
-                # Обрабатываем тап
                 multiplier = data.get("multiplier", 1.0)
                 taps = await game_engine.add_tap(game_id, user_id, multiplier)
                 
-                # Отправляем подтверждение
                 await websocket.send_json({
                     "type": "tap_confirmed",
                     "taps": taps
                 })
                 
-                # Обновляем лидерборд для всех
                 state = await game_engine.get_game_state(game_id)
                 await broadcast_to_game(game_id, {
                     "type": "leaderboard_update",
@@ -181,12 +181,12 @@ async def websocket_game(websocket: WebSocket, game_id: int, user_id: int):
                 })
     
     except WebSocketDisconnect:
-        active_connections[game_id].remove(websocket)
-        if not active_connections[game_id]:
-            del active_connections[game_id]
+        if game_id in active_connections and websocket in active_connections[game_id]:
+            active_connections[game_id].remove(websocket)
+            if not active_connections[game_id]:
+                del active_connections[game_id]
 
 async def broadcast_to_game(game_id: int, message: dict):
-    """Отправить сообщение всем игрокам"""
     if game_id not in active_connections:
         return
     
@@ -197,24 +197,19 @@ async def broadcast_to_game(game_id: int, message: dict):
         except:
             disconnected.append(ws)
     
-    # Убираем отключившихся
     for ws in disconnected:
-        active_connections[game_id].remove(ws)
+        if ws in active_connections[game_id]:
+            active_connections[game_id].remove(ws)
 
 # ========== ПЛАТЕЖИ ==========
 
 @app.post("/api/payment/invoice")
 async def create_invoice(user_id: int, game_id: int):
-    """Создать инвойс для оплаты"""
-    # Тут интеграция с Telegram Bot API для создания invoice
-    # Возвращаем ссылку на оплату
     return {
         "invoice_url": f"https://t.me/$YourBotUsername?start=pay_{game_id}_{user_id}"
     }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# ========== HEALTH ==========
 
 @app.get("/")
 async def root():
@@ -227,3 +222,7 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
