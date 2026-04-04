@@ -12,10 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .admin import router as admin_router
 from .database import Database
 from .game_engine import GameEngine
 from .game_config import GAME_TYPES
+from .admin import router as admin_router
 from aiogram import Bot
 from aiogram.types import LabeledPrice
 
@@ -43,13 +43,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(admin_router)
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Подключаем статические файлы
 if (BASE_DIR / "frontend").exists():
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "frontend")), name="static")
 
+# Подключаем админ роутер
+app.include_router(admin_router)
+
+# Инициализация
 db = Database()
 game_engine = GameEngine(db)
 active_connections: Dict[int, List[WebSocket]] = {}
@@ -73,6 +76,8 @@ async def startup():
     await game_engine.create_new_game("standard")
     print("🚀 Tap Wars API запущен!")
 
+# ========== СТАТИЧЕСКИЕ СТРАНИЦЫ ==========
+
 @app.get("/")
 async def root():
     index_path = BASE_DIR / "frontend" / "index.html"
@@ -80,17 +85,18 @@ async def root():
         return FileResponse(index_path)
     return {"message": "Tap Wars API is running!", "docs": "/docs", "health": "/health"}
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
+@app.get("/admin")
 @app.get("/admin.html")
-async def admin_page():
+async def admin_panel():
     """Админ панель"""
     admin_path = BASE_DIR / "frontend" / "admin.html"
     if admin_path.exists():
         return FileResponse(admin_path)
-    return {"error": "Admin page not found"}
+    return {"error": "Admin page not found. Please create frontend/admin.html"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 # ========== API АВТОРИЗАЦИИ ==========
 
