@@ -16,7 +16,7 @@ async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="🎮 ИГРАТЬ В TAP WARS",
-            web_app=WebAppInfo(url=https://tap-wars.onrender.com/)
+            web_app=WebAppInfo(url="https://tap-wars.onrender.com/")
         )],
         [InlineKeyboardButton(text="ℹ️ О игре", callback_data="about")],
         [InlineKeyboardButton(text="🏆 Топ игроков", callback_data="top")]
