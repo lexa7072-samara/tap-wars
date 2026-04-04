@@ -2,30 +2,37 @@ import asyncio
 import random
 from typing import Dict, List, Optional
 from datetime import datetime
+from .game_config import GAME_TYPES
 
 class GameEngine:
     def __init__(self, db):
         self.db = db
         self.active_games = {}  # {game_id: game_state}
-        self.taps_buffer = {}   # {game_id: {user_id: taps}}
         
-    async def create_new_game(self) -> int:
-        """Создать новую игру"""
+    async def create_new_game(self, game_type: str = "standard") -> int:
+        """Создать новую игру определённого типа"""
+        config = GAME_TYPES.get(game_type, GAME_TYPES["standard"])
+        
         game_id = await self.db.create_game(
+            game_type=game_type,
             status="waiting",
-            max_players=50,
-            ticket_price=50,
-            prize_pool=2000,
+            max_players=config["max_players"],
+            ticket_price=config["ticket_price"],
+            prize_pool=config["prize_pool"],
+            duration=config["duration"],
             start_time=None,
             end_time=None
         )
         
         self.active_games[game_id] = {
+            "game_type": game_type,
+            "config": config,
             "status": "waiting",
             "players": [],
             "taps": {},
             "start_time": None,
-            "end_time": None
+            "end_time": None,
+            "duration": config["duration"]
         }
         
         return game_id
@@ -40,12 +47,19 @@ class GameEngine:
         if user_id in game["players"]:
             return False
             
-        if len(game["players"]) >= 50:
+        if len(game["players"]) >= game["config"]["max_players"]:
+            return False
+            
+        # Проверяем, есть ли у пользователя билет
+        has_ticket = await self.db.check_user_ticket(user_id, game["game_type"])
+        if not has_ticket:
             return False
             
         game["players"].append(user_id)
         game["taps"][user_id] = 0
         
+        # Списываем билет
+        await self.db.use_ticket(user_id, game["game_type"])
         await self.db.add_player_to_game(game_id, user_id)
         
         return True
@@ -74,7 +88,7 @@ class GameEngine:
             
         game = self.active_games[game_id]
         
-        if len(game["players"]) >= 50 and game["status"] == "waiting":
+        if len(game["players"]) >= game["config"]["max_players"] and game["status"] == "waiting":
             await self.start_game(game_id)
             return True
             
@@ -91,13 +105,18 @@ class GameEngine:
         
         await self.db.update_game_status(game_id, "active")
         
-        # Запустить таймер на 60 секунд
+        # Запустить таймер
         asyncio.create_task(self.end_game_countdown(game_id))
     
     async def end_game_countdown(self, game_id: int):
         """Обратный отсчет до конца игры"""
-        await asyncio.sleep(60)  # 60 секунд игра
+        if game_id not in self.active_games:
+            return
+            
+        game = self.active_games[game_id]
+        duration = game["duration"]
         
+        await asyncio.sleep(duration)
         await self.end_game(game_id)
     
     async def end_game(self, game_id: int):
@@ -109,15 +128,15 @@ class GameEngine:
         game["status"] = "ended"
         game["end_time"] = datetime.now()
         
-        # Получить топ-5 игроков
+        # Получить топ игроков
         sorted_players = sorted(game["taps"].items(), key=lambda x: x[1], reverse=True)
-        top_5 = sorted_players[:5]
+        prize_distribution = game["config"]["prize_distribution"]
+        top_count = len(prize_distribution)
+        top_players = sorted_players[:top_count]
         
-        # Распределить призы (2000 звезд)
-        prizes = [800, 500, 350, 200, 150]  # Сумма = 2000
-        
-        for i, (user_id, taps) in enumerate(top_5):
-            prize = prizes[i] if i < len(prizes) else 0
+        # Распределить призы
+        for i, (user_id, taps) in enumerate(top_players):
+            prize = prize_distribution[i] if i < len(prize_distribution) else 0
             await self.db.add_winnings(user_id, prize, game_id)
             await self.db.update_user_balance(user_id, prize)
         
@@ -126,31 +145,8 @@ class GameEngine:
         # Очистить активную игру
         del self.active_games[game_id]
         
-        # Создать новую игру
-        await self.create_new_game()
-    
-    async def apply_boost(self, game_id: int, user_id: int, boost_type: str) -> bool:
-        """Применить буст"""
-        # Простая реализация бустов
-        boosts = {
-            "double_tap": {"multiplier": 2.0, "duration": 10},
-            "triple_tap": {"multiplier": 3.0, "duration": 5},
-            "auto_tap": {"multiplier": 0.5, "duration": 30}
-        }
-        
-        if boost_type not in boosts:
-            return False
-            
-        # Проверить, есть ли у пользователя буст
-        has_boost = await self.db.check_user_boost(user_id, boost_type)
-        
-        if not has_boost:
-            return False
-            
-        # Активировать буст
-        await self.db.use_boost(user_id, boost_type)
-        
-        return True
+        # Создать новую игру того же типа
+        await self.create_new_game(game["game_type"])
     
     async def get_game_state(self, game_id: int) -> Dict:
         """Получить текущее состояние игры"""
@@ -164,11 +160,19 @@ class GameEngine:
             [{"user_id": uid, "taps": taps} for uid, taps in game["taps"].items()],
             key=lambda x: x["taps"],
             reverse=True
-        )[:10]  # Топ-10
+        )[:10]
+        
+        time_elapsed = (datetime.now() - game["start_time"]).seconds if game["start_time"] else 0
+        time_left = max(0, game["duration"] - time_elapsed)
         
         return {
+            "game_type": game["game_type"],
             "status": game["status"],
             "players_count": len(game["players"]),
+            "max_players": game["config"]["max_players"],
             "leaderboard": leaderboard,
-            "time_left": 60 - (datetime.now() - game["start_time"]).seconds if game["start_time"] else 60
+            "time_left": time_left,
+            "duration": game["duration"],
+            "ticket_price": game["config"]["ticket_price"],
+            "prize_pool": game["config"]["prize_pool"]
         }
