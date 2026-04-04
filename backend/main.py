@@ -84,6 +84,14 @@ async def root():
 async def health():
     return {"status": "ok"}
 
+@app.get("/admin.html")
+async def admin_page():
+    """Админ панель"""
+    admin_path = BASE_DIR / "frontend" / "admin.html"
+    if admin_path.exists():
+        return FileResponse(admin_path)
+    return {"error": "Admin page not found"}
+
 # ========== API АВТОРИЗАЦИИ ==========
 
 @app.post("/api/auth")
