@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from .admin import router as admin_router
 from .database import Database
 from .game_engine import GameEngine
 from .game_config import GAME_TYPES
@@ -41,6 +42,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(admin_router)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
