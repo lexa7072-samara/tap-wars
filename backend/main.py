@@ -148,7 +148,41 @@ async def join_game(game_id: int, user_id: int):
         return {"success": True, "players_count": players_count}
     
     return {"success": False, "error": "Already in game"}
+# Добавьте эти API эндпоинты в backend/main.py:
 
+# ========== API ТИПОВ ИГР ==========
+
+@app.get("/api/game/types")
+async def get_game_types():
+    """Получить все доступные типы игр"""
+    from .game_config import GAME_TYPES
+    return {"types": GAME_TYPES}
+
+@app.post("/api/game/create")
+async def create_game(request: Request):
+    """Создать новую игру определённого типа"""
+    data = await request.json()
+    game_type = data.get("game_type", "standard")
+    game_id = await game_engine.create_new_game(game_type)
+    return {"success": True, "game_id": game_id}
+
+@app.get("/api/game/waiting")
+async def get_waiting_games():
+    """Получить все ожидающие игры"""
+    waiting = []
+    for game_id, game in game_engine.active_games.items():
+        if game["status"] == "waiting":
+            waiting.append({
+                "game_id": game_id,
+                "game_type": game["game_type"],
+                "players_count": len(game["players"]),
+                "max_players": game["config"]["max_players"],
+                "ticket_price": game["config"]["ticket_price"],
+                "prize_pool": game["config"]["prize_pool"],
+                "duration": game["config"]["duration"]
+            })
+    return {"games": waiting}
+    
 # ========== API ОБНОВЛЕНИЯ СЧЁТА ==========
 
 @app.post("/api/update-score")
