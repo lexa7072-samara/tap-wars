@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from .database import Database
 from .game_engine import GameEngine
+from .game_config import GAME_TYPES
 from aiogram import Bot
 from aiogram.types import LabeledPrice
 
@@ -41,14 +42,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Определяем базовую директорию
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Подключаем статические файлы
 if (BASE_DIR / "frontend").exists():
     app.mount("/static", StaticFiles(directory=str(BASE_DIR / "frontend")), name="static")
 
-# Инициализация
 db = Database()
 game_engine = GameEngine(db)
 active_connections: Dict[int, List[WebSocket]] = {}
@@ -69,10 +67,8 @@ class ScoreUpdate(BaseModel):
 @app.on_event("startup")
 async def startup():
     await db.init()
-    await game_engine.create_new_game()
+    await game_engine.create_new_game("standard")
     print("🚀 Tap Wars API запущен!")
-
-# ========== ГЛАВНАЯ СТРАНИЦА ==========
 
 @app.get("/")
 async def root():
@@ -108,20 +104,34 @@ async def authenticate(auth: UserAuth):
 
 # ========== API ИГРЫ ==========
 
+@app.get("/api/game/types")
+async def get_game_types():
+    return {"types": GAME_TYPES}
+
+@app.post("/api/game/create")
+async def create_game(request: Request):
+    data = await request.json()
+    game_type = data.get("game_type", "standard")
+    game_id = await game_engine.create_new_game(game_type)
+    return {"success": True, "game_id": game_id}
+
 @app.get("/api/game/current")
 async def get_current_game():
     game = await db.get_active_game()
     if not game:
-        game_id = await game_engine.create_new_game()
+        game_id = await game_engine.create_new_game("standard")
         game = await db.get_active_game()
     
     players_count = await db.get_game_players_count(game["game_id"])
     
     return {
         "game_id": game["game_id"],
+        "game_type": game.get("game_type", "standard"),
         "players_count": players_count,
-        "players_needed": 50,
-        "ticket_price": 50,
+        "max_players": game["max_players"],
+        "ticket_price": game["ticket_price"],
+        "prize_pool": game["prize_pool"],
+        "duration": game.get("duration", 60),
         "status": game["status"]
     }
 
@@ -147,52 +157,14 @@ async def join_game(game_id: int, user_id: int):
         
         return {"success": True, "players_count": players_count}
     
-    return {"success": False, "error": "Already in game"}
-# Добавьте эти API эндпоинты в backend/main.py:
+    return {"success": False, "error": "Already in game or no ticket"}
 
-# ========== API ТИПОВ ИГР ==========
-
-@app.get("/api/game/types")
-async def get_game_types():
-    """Получить все доступные типы игр"""
-    from .game_config import GAME_TYPES
-    return {"types": GAME_TYPES}
-
-@app.post("/api/game/create")
-async def create_game(request: Request):
-    """Создать новую игру определённого типа"""
-    data = await request.json()
-    game_type = data.get("game_type", "standard")
-    game_id = await game_engine.create_new_game(game_type)
-    return {"success": True, "game_id": game_id}
-
-@app.get("/api/game/waiting")
-async def get_waiting_games():
-    """Получить все ожидающие игры"""
-    waiting = []
-    for game_id, game in game_engine.active_games.items():
-        if game["status"] == "waiting":
-            waiting.append({
-                "game_id": game_id,
-                "game_type": game["game_type"],
-                "players_count": len(game["players"]),
-                "max_players": game["config"]["max_players"],
-                "ticket_price": game["config"]["ticket_price"],
-                "prize_pool": game["config"]["prize_pool"],
-                "duration": game["config"]["duration"]
-            })
-    return {"games": waiting}
-    
 # ========== API ОБНОВЛЕНИЯ СЧЁТА ==========
 
 @app.post("/api/update-score")
 async def update_score(data: ScoreUpdate):
-    # Обновляем счёт пользователя в БД
     await db.update_user_score(data.user_id, data.username, data.full_name, data.score)
-    
-    # Получаем обновлённый лидерборд
     leaders = await db.get_leaderboard(10)
-    
     return {"success": True, "leaderboard": leaders}
 
 @app.get("/api/leaderboard")
@@ -200,12 +172,56 @@ async def get_leaderboard():
     leaders = await db.get_leaderboard(10)
     return {"leaders": leaders}
 
-@app.get("/api/user/{user_id}")
-async def get_user_data(user_id: int):
+@app.get("/api/balance/{user_id}")
+async def get_balance(user_id: int):
     user = await db.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+    if user:
+        return {"success": True, "balance": user.get("balance", 0)}
+    return {"success": False, "balance": 0}
+
+# ========== API ВЫВОДА СРЕДСТВ ==========
+
+@app.post("/api/withdraw/request")
+async def request_withdraw(request: Request):
+    data = await request.json()
+    user_id = data.get("user_id")
+    amount = data.get("amount")
+    
+    MIN_WITHDRAW = 100
+    
+    if amount < MIN_WITHDRAW:
+        return {
+            "success": False, 
+            "error": f"Минимальная сумма вывода: {MIN_WITHDRAW} ⭐"
+        }
+    
+    user = await db.get_user(user_id)
+    if not user or user.get("balance", 0) < amount:
+        return {"success": False, "error": "Недостаточно звезд"}
+    
+    success = await db.withdraw_stars(user_id, amount)
+    
+    if success:
+        return {
+            "success": True,
+            "message": f"Запрос на вывод {amount} ⭐ создан. Ожидайте обработки."
+        }
+    
+    return {"success": False, "error": "Ошибка при создании запроса"}
+
+@app.get("/api/withdraw/history/{user_id}")
+async def get_withdraw_history(user_id: int):
+    history = await db.get_withdraw_history(user_id)
+    return {"success": True, "history": history}
+
+@app.get("/api/withdraw/info/{user_id}")
+async def get_withdraw_info(user_id: int):
+    info = await db.get_withdraw_info(user_id)
+    return {
+        "min_amount": 100,
+        "fee": 0,
+        "pending": info.get("pending", 0)
+    }
 
 # ========== API ПЛАТЕЖЕЙ ==========
 
@@ -220,15 +236,19 @@ async def create_invoice(request: Request):
         if not bot:
             return {"success": False, "error": "Bot not initialized"}
         
-        # Создаём ссылку на оплату
         invoice_link = await bot.create_invoice_link(
             title="🎮 Билет на Tap Wars",
-            description=f"Участие в битве на 50 игроков. Топ-5 делят 2000⭐",
+            description=f"Участие в битве на игроков. Топ-делят призовой фонд",
             payload=f"game_ticket_{game_id}_{user_id}",
             provider_token="",
             currency="XTR",
             prices=[LabeledPrice(label="Билет на игру", amount=amount)]
         )
+        
+        # Добавляем билет пользователю после оплаты
+        game = await db.get_active_game()
+        if game:
+            await db.add_ticket(user_id, game.get("game_type", "standard"), 1)
         
         return {"success": True, "invoice_link": invoice_link}
     except Exception as e:
@@ -242,14 +262,12 @@ async def telegram_webhook(request: Request):
     try:
         data = await request.json()
         
-        # Обработка предоплаты
         if "pre_checkout_query" in data:
             query_id = data["pre_checkout_query"]["id"]
             if bot:
                 await bot.answer_pre_checkout_query(query_id, ok=True)
             return {"ok": True}
         
-        # Обработка успешного платежа
         if "message" in data and "successful_payment" in data["message"]:
             payment = data["message"]["successful_payment"]
             payload = payment["invoice_payload"]
@@ -259,7 +277,6 @@ async def telegram_webhook(request: Request):
                 game_id = int(parts[2])
                 user_id = int(parts[3])
                 
-                # Добавляем пользователя в игру
                 await game_engine.join_game(game_id, user_id)
                 print(f"✅ User {user_id} joined game {game_id} after payment")
         
