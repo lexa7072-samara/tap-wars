@@ -4,8 +4,8 @@ from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
 import logging
 
-BOT_TOKEN = "8240289302:AAH..."
-WEB_APP_URL = "https://your-domain.com"  # URL где хостится фронтенд
+BOT_TOKEN = "7719717032:AAG4GwZp_2CRecHJ4mrsKKSIntgUsgqggEk"
+WEB_APP_URL = "https://tap-wars.onrender.com/"  # URL где хостится фронтенд
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
@@ -16,7 +16,7 @@ async def cmd_start(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
             text="🎮 ИГРАТЬ В TAP WARS",
-            web_app=WebAppInfo(url=WEB_APP_URL)
+            web_app=WebAppInfo(url=https://tap-wars.onrender.com/)
         )],
         [InlineKeyboardButton(text="ℹ️ О игре", callback_data="about")],
         [InlineKeyboardButton(text="🏆 Топ игроков", callback_data="top")]
