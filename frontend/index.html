@@ -2,146 +2,207 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Tap Wars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .tap-area {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: transform 0.05s;
+            user-select: none;
+        }
+        
+        .tap-area:active {
+            transform: scale(0.95);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        .leaderboard {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .leaderboard h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        #leaderboard-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .score {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            color: #764ba2;
+        }
+    </style>
 </head>
 <body>
-    <div id="app">
-        <!-- Экран загрузки -->
-        <div id="loading-screen" class="screen active">
-            <div class="loader"></div>
-            <p>Loading Tap Wars...</p>
+    <div class="game-container">
+        <h1>⚡ TAP WARS ⚡</h1>
+        <div class="stats">
+            <div>💰 Баланс: <span id="balance">0</span> ⭐</div>
+            <div>👥 Игроков: <span id="players-count">0</span>/50</div>
         </div>
-
-        <!-- Главное меню -->
-        <div id="menu-screen" class="screen">
-            <div class="header">
-                <h1>⚔️ TAP WARS</h1>
-                <div class="user-info">
-                    <span id="username"></span>
-                    <span id="balance">0 ⭐</span>
-                </div>
-            </div>
-
-            <div class="menu-buttons">
-                <button class="btn-primary" onclick="startGame()">
-                    🎮 ИГРАТЬ
-                </button>
-                <button class="btn-secondary" onclick="showLeaderboard()">
-                    🏆 ТОП ИГРОКОВ
-                </button>
-                <button class="btn-secondary" onclick="showProfile()">
-                    👤 ПРОФИЛЬ
-                </button>
-                <button class="btn-secondary" onclick="showReferrals()">
-                    👥 ПРИГЛАСИТЬ ДРУЗЕЙ
-                </button>
-            </div>
+        <div class="tap-area" id="tap-area">
+            👆 ТАПАЙ 👆
         </div>
-
-        <!-- Лобби игры -->
-        <div id="lobby-screen" class="screen">
-            <div class="lobby-header">
-                <h2>⏳ Ожидание игроков</h2>
-                <p id="lobby-players">0 / 50</p>
-            </div>
-
-            <div class="lobby-info">
-                <div class="info-card">
-                    <span>💰 Призовой фонд</span>
-                    <strong id="prize-pool">0 ⭐</strong>
-                </div>
-                <div class="info-card">
-                    <span>🎟 Цена билета</span>
-                    <strong>50 ⭐</strong>
-                </div>
-            </div>
-
-            <div class="lobby-prizes">
-                <h3>🏆 Призы</h3>
-                <div class="prize-list">
-                    <div class="prize-item">🥇 1 место — 40%</div>
-                    <div class="prize-item">🥈 2 место — 25%</div>
-                    <div class="prize-item">🥉 3 место — 15%</div>
-                </div>
-            </div>
-
-            <button class="btn-cancel" onclick="leaveLobby()">Назад</button>
+        <div class="score">
+            Счёт: <span id="score">0</span>
         </div>
-
-        <!-- Игровой экран -->
-        <div id="game-screen" class="screen">
-            <div class="game-header">
-                <div class="timer" id="game-timer">60</div>
-                <div class="my-taps">
-                    <span>Твои тапы:</span>
-                    <strong id="my-taps-count">0</strong>
-                </div>
-            </div>
-
-            <!-- Canvas для анимации -->
-            <canvas id="game-canvas"></canvas>
-
-            <!-- Кнопка тапа -->
-            <div class="tap-zone">
-                <button id="tap-button" class="tap-btn">
-                    👆 TAP!
-                </button>
-                <div id="tap-counter">+0</div>
-            </div>
-
-            <!-- Бусты -->
-            <div class="boosts">
-                <button class="boost-btn" onclick="activateBoost('2x')">
-                    ⚡ x2<br><span>10 ⭐</span>
-                </button>
-                <button class="boost-btn" onclick="activateBoost('3x')">
-                    🔥 x3<br><span>25 ⭐</span>
-                </button>
-                <button class="boost-btn" onclick="activateBoost('turbo')">
-                    🚀 x5<br><span>15 ⭐</span>
-                </button>
-            </div>
-
-            <!-- Мини-лидерборд -->
-            <div class="mini-leaderboard">
-                <h4>📊 ТОП-5</h4>
-                <div id="live-leaderboard"></div>
-            </div>
-        </div>
-
-        <!-- Экран результатов -->
-        <div id="results-screen" class="screen">
-            <div class="results-header">
-                <h2 id="result-title">🎉 ИГРА ЗАВЕРШЕНА!</h2>
-            </div>
-
-            <div class="result-card">
-                <div class="my-result">
-                    <span>Твоё место</span>
-                    <strong id="my-position">#1</strong>
-                </div>
-                <div class="my-result">
-                    <span>Тапов</span>
-                    <strong id="my-final-taps">1250</strong>
-                </div>
-                <div class="my-result prize">
-                    <span>Выигрыш</span>
-                    <strong id="my-prize">500 ⭐</strong>
-                </div>
-            </div>
-
-            <div class="winners-list" id="winners-list"></div>
-
-            <button class="btn-primary" onclick="backToMenu()">
-                🎮 ИГРАТЬ ЕЩЁ
-            </button>
+        <div class="leaderboard">
+            <h3>🏆 Топ игроков</h3>
+            <div id="leaderboard-list">Загрузка...</div>
         </div>
     </div>
-
-    <script src="app.js"></script>
-    <script src="game.js"></script>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        
+        let score = 0;
+        let userId = Math.floor(Math.random() * 10000); // Временный ID
+        
+        const tapArea = document.getElementById('tap-area');
+        const scoreSpan = document.getElementById('score');
+        const leaderboardDiv = document.getElementById('leaderboard-list');
+        
+        // Обновление счёта на сервере
+        async function updateScore() {
+            try {
+                const response = await fetch('/api/update-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, score: score })
+                });
+                const data = await response.json();
+                if (data.leaderboard) {
+                    updateLeaderboard(data.leaderboard);
+                }
+            } catch(e) {
+                console.error('Error:', e);
+            }
+        }
+        
+        // Обновление лидерборда
+        function updateLeaderboard(leaderboard) {
+            if (!leaderboard || leaderboard.length === 0) {
+                leaderboardDiv.innerHTML = 'Нет данных';
+                return;
+            }
+            
+            leaderboardDiv.innerHTML = '';
+            leaderboard.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                item.innerHTML = `
+                    <span>${index + 1}. ${player.username || 'Player ' + player.user_id}</span>
+                    <span>${player.score || player.taps || 0} 👆</span>
+                `;
+                leaderboardDiv.appendChild(item);
+            });
+        }
+        
+        // Обработка тапа
+        tapArea.addEventListener('click', () => {
+            score++;
+            scoreSpan.textContent = score;
+            
+            // Визуальный эффект
+            tapArea.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                tapArea.style.transform = 'scale(1)';
+            }, 100);
+            
+            // Отправляем на сервер каждые 10 тапов
+            if (score % 10 === 0) {
+                updateScore();
+            }
+        });
+        
+        // Получение лидерборда
+        async function getLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+                if (data.leaders) {
+                    updateLeaderboard(data.leaders);
+                }
+            } catch(e) {
+                console.error('Error:', e);
+            }
+        }
+        
+        // Загружаем лидерборд при старте
+        getLeaderboard();
+        
+        // Обновляем каждые 5 секунд
+        setInterval(getLeaderboard, 5000);
+        
+        console.log('Tap Wars Mini App loaded!', 'User ID:', userId);
+    </script>
 </body>
 </html>
