@@ -157,6 +157,15 @@
         button:active {
             transform: scale(0.98);
         }
+        
+        .share-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .restart-btn {
+            background: #ff6b6b;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -193,7 +202,8 @@
             <div id="leaderboard-list">Загрузка...</div>
         </div>
         
-        <button id="share-btn" style="display: none;">📤 Поделиться результатом</button>
+        <button class="share-btn" id="share-btn" style="display: none;">📤 Поделиться результатом</button>
+        <button class="restart-btn" id="restart-btn" style="display: none;">🔄 Новая игра</button>
     </div>
     
     <script>
@@ -208,7 +218,7 @@
         const username = tg.initDataUnsafe?.user?.username || 'Player';
         const firstName = tg.initDataUnsafe?.user?.first_name || '';
         const lastName = tg.initDataUnsafe?.user?.last_name || '';
-        const fullName = firstName + ' ' + lastName || username;
+        const fullName = (firstName + ' ' + lastName).trim() || username;
         
         // Показываем информацию о пользователе
         document.getElementById('player-info').innerHTML = `
@@ -220,9 +230,10 @@
         
         // Игровые переменные
         let score = 0;
-        let gameActive = true;
+        let gameActive = false;
         let timeLeft = 60;
         let timerInterval = null;
+        let gameStarted = false;
         
         // Элементы DOM
         const tapArea = document.getElementById('tap-area');
@@ -232,16 +243,61 @@
         const gameStatusSpan = document.getElementById('game-status');
         const playersCountSpan = document.getElementById('players-count');
         const shareBtn = document.getElementById('share-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // Функция для шеринга результата
+        function shareScore() {
+            tg.showAlert(`🏆 Мой рекорд в Tap Wars: ${score} тапов! 🏆\n\nПрисоединяйтесь к игре!`);
+            
+            // Дополнительно можно отправить сообщение в чат
+            tg.showPopup({
+                title: 'Поделиться результатом',
+                message: `Я набрал ${score} тапов в Tap Wars! А сколько наберёшь ты?`,
+                buttons: [
+                    {id: 'share', type: 'default', text: '📤 Поделиться'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, (buttonId) => {
+                if (buttonId === 'share') {
+                    tg.sendData(JSON.stringify({
+                        action: 'share',
+                        score: score
+                    }));
+                }
+            });
+        }
+        
+        // Функция для перезапуска игры
+        function restartGame() {
+            score = 0;
+            timeLeft = 60;
+            gameActive = true;
+            gameStarted = true;
+            scoreSpan.textContent = '0';
+            timerSpan.textContent = '⏱️ 60:00';
+            tapArea.style.pointerEvents = 'auto';
+            tapArea.style.opacity = '1';
+            gameStatusSpan.className = 'game-status playing';
+            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
+            shareBtn.style.display = 'none';
+            restartBtn.style.display = 'none';
+            
+            // Очищаем старый таймер и запускаем новый
+            if (timerInterval) clearInterval(timerInterval);
+            startTimer();
+        }
         
         // Запуск таймера
         function startTimer() {
             timerInterval = setInterval(() => {
                 if (!gameActive) return;
                 
-                timeLeft--;
-                const seconds = timeLeft % 60;
-                const minutes = Math.floor(timeLeft / 60);
-                timerSpan.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    const seconds = timeLeft % 60;
+                    const minutes = Math.floor(timeLeft / 60);
+                    timerSpan.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
                 
                 if (timeLeft <= 0) {
                     endGame();
@@ -252,18 +308,20 @@
         // Завершение игры
         async function endGame() {
             gameActive = false;
+            gameStarted = false;
             clearInterval(timerInterval);
             tapArea.style.pointerEvents = 'none';
             tapArea.style.opacity = '0.5';
             gameStatusSpan.className = 'game-status ended';
             gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
             shareBtn.style.display = 'block';
+            restartBtn.style.display = 'block';
             
             // Финальное обновление счёта
             await updateScore();
             
             // Показываем результат
-            tg.showAlert(`Игра окончена!\nВаш результат: ${score} тапов!\nПроверьте место в турнирной таблице!`);
+            tg.showAlert(`🏁 Игра окончена!\n\n📊 Ваш результат: ${score} тапов!\n🏆 Проверьте своё место в турнирной таблице!`);
         }
         
         // Обновление счёта на сервере
@@ -309,8 +367,14 @@
                     item.style.fontWeight = 'bold';
                 }
                 
+                // Медали для топ-3
+                let medal = '';
+                if (index === 0) medal = '🥇 ';
+                else if (index === 1) medal = '🥈 ';
+                else if (index === 2) medal = '🥉 ';
+                
                 item.innerHTML = `
-                    <span>${index + 1}. ${playerName}</span>
+                    <span>${medal}${index + 1}. ${playerName}</span>
                     <span>${playerScore} 👆</span>
                 `;
                 leaderboardDiv.appendChild(item);
@@ -344,7 +408,7 @@
                     const data = await response.json();
                     if (data.success) {
                         console.log('Joined game successfully!');
-                        if (data.players_count >= 50) {
+                        if (data.players_count >= 50 && !gameStarted) {
                             startGame();
                         }
                     }
@@ -357,6 +421,7 @@
         // Начало игры
         function startGame() {
             gameActive = true;
+            gameStarted = true;
             gameStatusSpan.className = 'game-status playing';
             gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
             startTimer();
@@ -394,10 +459,9 @@
             }
         }
         
-        // Поделиться результатом
-        shareBtn.addEventListener('click', () => {
-            tg.showAlert(`🏆 Мой результат в Tap Wars: ${score} тапов! 🏆\nПрисоединяйтесь!`);
-        });
+        // Обработчики кнопок
+        shareBtn.addEventListener('click', shareScore);
+        restartBtn.addEventListener('click', restartGame);
         
         // Инициализация игры
         async function init() {
@@ -411,7 +475,7 @@
             // Обновляем количество игроков каждые 2 секунды
             setInterval(async () => {
                 const game = await getCurrentGame();
-                if (game.players_count >= 50 && !gameActive) {
+                if (game.players_count >= 50 && !gameStarted && !gameActive) {
                     startGame();
                 }
             }, 2000);
