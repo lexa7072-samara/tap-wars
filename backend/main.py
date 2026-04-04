@@ -4,38 +4,49 @@ import urllib.parse
 from typing import Dict, List
 from pathlib import Path
 from dotenv import load_dotenv
-# Определяем базовую директорию проекта (на уровень выше папки backend)
-BASE_DIR = Path(__file__).resolve().parent.parent
+import os
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .database import Database
 from .game_engine import GameEngine
+from aiogram import Bot
+from aiogram.types import LabeledPrice
 
 load_dotenv()
 
 app = FastAPI(title="Tap Wars API")
 
-# CORS — разрешаем запросы с фронтенда
+# Telegram Bot
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://tap-wars.onrender.com")
+bot = Bot(token=BOT_TOKEN) if BOT_TOKEN else None
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://твой-username.github.io",
+        "https://tap-wars.onrender.com",
+        "https://t.me",
+        "https://web.telegram.org",
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://*.t.me",  # Для Telegram Mini App
-        "https://t.me"
+        "http://127.0.0.1:3000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Подключаем статические файлы (frontend)
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "frontend")), name="static")
+# Определяем базовую директорию
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Подключаем статические файлы
+if (BASE_DIR / "frontend").exists():
+    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "frontend")), name="static")
 
 # Инициализация
 db = Database()
@@ -47,7 +58,13 @@ active_connections: Dict[int, List[WebSocket]] = {}
 class UserAuth(BaseModel):
     init_data: str
 
-# ========== ИНИЦИАЛИЗАЦИЯ ==========
+class ScoreUpdate(BaseModel):
+    user_id: int
+    username: str
+    full_name: str
+    score: int
+
+# ========== ЗАПУСК ==========
 
 @app.on_event("startup")
 async def startup():
@@ -55,13 +72,24 @@ async def startup():
     await game_engine.create_new_game()
     print("🚀 Tap Wars API запущен!")
 
-# ========== REST API ==========
+# ========== ГЛАВНАЯ СТРАНИЦА ==========
+
+@app.get("/")
+async def root():
+    index_path = BASE_DIR / "frontend" / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return {"message": "Tap Wars API is running!", "docs": "/docs", "health": "/health"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+# ========== API АВТОРИЗАЦИИ ==========
 
 @app.post("/api/auth")
 async def authenticate(auth: UserAuth):
-    """Авторизация через Telegram WebApp"""
     data = dict(urllib.parse.parse_qsl(auth.init_data))
-    
     user_data = json.loads(data.get('user', '{}'))
     user_id = user_data.get('id')
     
@@ -76,16 +104,12 @@ async def authenticate(auth: UserAuth):
     )
     
     user = await db.get_user(user_id)
-    
-    return {
-        "success": True,
-        "user": user,
-        "token": f"token_{user_id}"
-    }
+    return {"success": True, "user": user}
+
+# ========== API ИГРЫ ==========
 
 @app.get("/api/game/current")
 async def get_current_game():
-    """Получить текущую игру"""
     game = await db.get_active_game()
     if not game:
         game_id = await game_engine.create_new_game()
@@ -103,7 +127,6 @@ async def get_current_game():
 
 @app.post("/api/game/{game_id}/join")
 async def join_game(game_id: int, user_id: int):
-    """Присоединиться к игре"""
     success = await game_engine.join_game(game_id, user_id)
     
     if success:
@@ -126,19 +149,90 @@ async def join_game(game_id: int, user_id: int):
     
     return {"success": False, "error": "Already in game"}
 
+# ========== API ОБНОВЛЕНИЯ СЧЁТА ==========
+
+@app.post("/api/update-score")
+async def update_score(data: ScoreUpdate):
+    # Обновляем счёт пользователя в БД
+    await db.update_user_score(data.user_id, data.username, data.full_name, data.score)
+    
+    # Получаем обновлённый лидерборд
+    leaders = await db.get_leaderboard(10)
+    
+    return {"success": True, "leaderboard": leaders}
+
 @app.get("/api/leaderboard")
 async def get_leaderboard():
-    """Топ игроков"""
-    leaders = await db.get_leaderboard(100)
+    leaders = await db.get_leaderboard(10)
     return {"leaders": leaders}
 
 @app.get("/api/user/{user_id}")
 async def get_user_data(user_id: int):
-    """Данные пользователя"""
     user = await db.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+# ========== API ПЛАТЕЖЕЙ ==========
+
+@app.post("/api/payment/create-invoice")
+async def create_invoice(request: Request):
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        game_id = data.get("game_id")
+        amount = data.get("amount", 50)
+        
+        if not bot:
+            return {"success": False, "error": "Bot not initialized"}
+        
+        # Создаём ссылку на оплату
+        invoice_link = await bot.create_invoice_link(
+            title="🎮 Билет на Tap Wars",
+            description=f"Участие в битве на 50 игроков. Топ-5 делят 2000⭐",
+            payload=f"game_ticket_{game_id}_{user_id}",
+            provider_token="",
+            currency="XTR",
+            prices=[LabeledPrice(label="Билет на игру", amount=amount)]
+        )
+        
+        return {"success": True, "invoice_link": invoice_link}
+    except Exception as e:
+        print(f"Error creating invoice: {e}")
+        return {"success": False, "error": str(e)}
+
+# ========== ВЕБХУК ДЛЯ TELEGRAM ==========
+
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    try:
+        data = await request.json()
+        
+        # Обработка предоплаты
+        if "pre_checkout_query" in data:
+            query_id = data["pre_checkout_query"]["id"]
+            if bot:
+                await bot.answer_pre_checkout_query(query_id, ok=True)
+            return {"ok": True}
+        
+        # Обработка успешного платежа
+        if "message" in data and "successful_payment" in data["message"]:
+            payment = data["message"]["successful_payment"]
+            payload = payment["invoice_payload"]
+            
+            parts = payload.split("_")
+            if len(parts) >= 4:
+                game_id = int(parts[2])
+                user_id = int(parts[3])
+                
+                # Добавляем пользователя в игру
+                await game_engine.join_game(game_id, user_id)
+                print(f"✅ User {user_id} joined game {game_id} after payment")
+        
+        return {"ok": True}
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return {"ok": False}
 
 # ========== WEBSOCKET ==========
 
@@ -168,16 +262,6 @@ async def websocket_game(websocket: WebSocket, game_id: int, user_id: int):
                     "type": "leaderboard_update",
                     "leaderboard": state["leaderboard"]
                 })
-            
-            elif data["type"] == "boost":
-                boost_type = data.get("boost_type")
-                success = await game_engine.apply_boost(game_id, user_id, boost_type)
-                
-                await websocket.send_json({
-                    "type": "boost_activated",
-                    "success": success,
-                    "boost_type": boost_type
-                })
     
     except WebSocketDisconnect:
         if game_id in active_connections and websocket in active_connections[game_id]:
@@ -200,30 +284,7 @@ async def broadcast_to_game(game_id: int, message: dict):
         if ws in active_connections[game_id]:
             active_connections[game_id].remove(ws)
 
-# ========== ПЛАТЕЖИ ==========
-
-@app.post("/api/payment/invoice")
-async def create_invoice(user_id: int, game_id: int):
-    return {
-        "invoice_url": f"https://t.me/$YourBotUsername?start=pay_{game_id}_{user_id}"
-    }
-
-# ========== HEALTH ==========
-
-@app.get("/")
-async def root():
-    # Отдаём файл index.html из папки frontend
-    from fastapi.responses import FileResponse
-    index_path = BASE_DIR / "frontend" / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    else:
-        return {"message": "Tap Wars API is running!", "docs": "/docs", "health": "/health"}
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
