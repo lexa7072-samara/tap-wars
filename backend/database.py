@@ -11,7 +11,7 @@ class Database:
         self.connection = sqlite3.connect(self.db_path)
         cursor = self.connection.cursor()
         
-        # Таблица пользователей (обновлённая)
+        # Таблица пользователей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -26,14 +26,26 @@ class Database:
             )
         ''')
         
-        # Таблица игр
+        # Таблица билетов пользователей
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_tickets (
+                user_id INTEGER,
+                game_type TEXT,
+                count INTEGER DEFAULT 0,
+                PRIMARY KEY (user_id, game_type)
+            )
+        ''')
+        
+        # Таблица игр (обновлённая с game_type)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS games (
                 game_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_type TEXT,
                 status TEXT,
                 max_players INTEGER,
                 ticket_price INTEGER,
                 prize_pool INTEGER,
+                duration INTEGER,
                 start_time TIMESTAMP,
                 end_time TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -100,27 +112,34 @@ class Database:
             }
         return None
     
-    async def create_game(self, status: str, max_players: int, ticket_price: int, prize_pool: int, start_time, end_time) -> int:
+    async def create_game(self, game_type: str, status: str, max_players: int, ticket_price: int, prize_pool: int, duration: int, start_time, end_time) -> int:
+        """Создать новую игру с указанием типа"""
         cursor = self.connection.cursor()
         cursor.execute('''
-            INSERT INTO games (status, max_players, ticket_price, prize_pool, start_time, end_time)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (status, max_players, ticket_price, prize_pool, start_time, end_time))
+            INSERT INTO games (game_type, status, max_players, ticket_price, prize_pool, duration, start_time, end_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (game_type, status, max_players, ticket_price, prize_pool, duration, start_time, end_time))
         self.connection.commit()
         return cursor.lastrowid
     
-    async def get_active_game(self) -> Dict:
+    async def get_active_game(self, game_type: str = None) -> Dict:
+        """Получить активную игру (можно фильтровать по типу)"""
         cursor = self.connection.cursor()
-        cursor.execute('SELECT * FROM games WHERE status = "waiting" OR status = "active" LIMIT 1')
+        if game_type:
+            cursor.execute('SELECT * FROM games WHERE game_type = ? AND (status = "waiting" OR status = "active") LIMIT 1', (game_type,))
+        else:
+            cursor.execute('SELECT * FROM games WHERE status = "waiting" OR status = "active" LIMIT 1')
         row = cursor.fetchone()
         
         if row:
             return {
                 "game_id": row[0],
-                "status": row[1],
-                "max_players": row[2],
-                "ticket_price": row[3],
-                "prize_pool": row[4]
+                "game_type": row[1],
+                "status": row[2],
+                "max_players": row[3],
+                "ticket_price": row[4],
+                "prize_pool": row[5],
+                "duration": row[6]
             }
         return None
     
@@ -167,8 +186,34 @@ class Database:
         rows = cursor.fetchall()
         return [{"user_id": r[0], "username": r[1], "full_name": r[2] or r[1], "score": r[3]} for r in rows]
     
-    async def check_user_boost(self, user_id: int, boost_type: str) -> bool:
-        return True
+    # Методы для работы с билетами
+    async def check_user_ticket(self, user_id: int, game_type: str) -> bool:
+        """Проверить, есть ли у пользователя билет на игру"""
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            SELECT count FROM user_tickets 
+            WHERE user_id = ? AND game_type = ? AND count > 0
+        ''', (user_id, game_type))
+        row = cursor.fetchone()
+        return row is not None
     
-    async def use_boost(self, user_id: int, boost_type: str):
-        pass
+    async def use_ticket(self, user_id: int, game_type: str):
+        """Списать билет"""
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            UPDATE user_tickets 
+            SET count = count - 1 
+            WHERE user_id = ? AND game_type = ? AND count > 0
+        ''', (user_id, game_type))
+        self.connection.commit()
+    
+    async def add_ticket(self, user_id: int, game_type: str, count: int = 1):
+        """Добавить билет пользователю"""
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            INSERT INTO user_tickets (user_id, game_type, count)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id, game_type) 
+            DO UPDATE SET count = count + ?
+        ''', (user_id, game_type, count, count))
+        self.connection.commit()
