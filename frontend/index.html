@@ -36,8 +36,18 @@
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             font-size: 28px;
+        }
+        
+        .player-info {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding: 5px;
+            background: #f0f0f0;
+            border-radius: 10px;
         }
         
         .tap-area {
@@ -52,6 +62,7 @@
             margin: 20px 0;
             transition: transform 0.05s;
             user-select: none;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
         }
         
         .tap-area:active {
@@ -67,6 +78,14 @@
             border-radius: 10px;
         }
         
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #764ba2;
+        }
+        
         .leaderboard {
             margin-top: 20px;
             padding: 10px;
@@ -77,6 +96,7 @@
         .leaderboard h3 {
             margin-bottom: 10px;
             color: #333;
+            text-align: center;
         }
         
         #leaderboard-list {
@@ -96,39 +116,155 @@
             font-weight: bold;
             text-align: center;
             color: #764ba2;
+            margin: 10px 0;
+        }
+        
+        .game-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .game-status.waiting {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .game-status.playing {
+            background: #55efc4;
+            color: #006266;
+        }
+        
+        .game-status.ended {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        button:active {
+            transform: scale(0.98);
         }
     </style>
 </head>
 <body>
     <div class="game-container">
         <h1>⚡ TAP WARS ⚡</h1>
+        
+        <div class="player-info" id="player-info">
+            Загрузка...
+        </div>
+        
         <div class="stats">
             <div>💰 Баланс: <span id="balance">0</span> ⭐</div>
             <div>👥 Игроков: <span id="players-count">0</span>/50</div>
         </div>
+        
+        <div class="timer" id="timer">
+            ⏱️ 60:00
+        </div>
+        
+        <div class="game-status waiting" id="game-status">
+            ⏳ Ожидание игроков...
+        </div>
+        
         <div class="tap-area" id="tap-area">
             👆 ТАПАЙ 👆
         </div>
+        
         <div class="score">
-            Счёт: <span id="score">0</span>
+            🎯 Счёт: <span id="score">0</span>
         </div>
+        
         <div class="leaderboard">
             <h3>🏆 Топ игроков</h3>
             <div id="leaderboard-list">Загрузка...</div>
         </div>
+        
+        <button id="share-btn" style="display: none;">📤 Поделиться результатом</button>
     </div>
     
     <script>
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
+        tg.enableClosingConfirmation();
         
+        // Получаем данные пользователя из Telegram
+        const userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 10000);
+        const username = tg.initDataUnsafe?.user?.username || 'Player';
+        const firstName = tg.initDataUnsafe?.user?.first_name || '';
+        const lastName = tg.initDataUnsafe?.user?.last_name || '';
+        const fullName = firstName + ' ' + lastName || username;
+        
+        // Показываем информацию о пользователе
+        document.getElementById('player-info').innerHTML = `
+            👤 ${fullName} (@${username})<br>
+            🆔 ID: ${userId}
+        `;
+        
+        console.log('👤 Пользователь:', fullName, 'Username:', username, 'ID:', userId);
+        
+        // Игровые переменные
         let score = 0;
-        let userId = Math.floor(Math.random() * 10000); // Временный ID
+        let gameActive = true;
+        let timeLeft = 60;
+        let timerInterval = null;
         
+        // Элементы DOM
         const tapArea = document.getElementById('tap-area');
         const scoreSpan = document.getElementById('score');
         const leaderboardDiv = document.getElementById('leaderboard-list');
+        const timerSpan = document.getElementById('timer');
+        const gameStatusSpan = document.getElementById('game-status');
+        const playersCountSpan = document.getElementById('players-count');
+        const shareBtn = document.getElementById('share-btn');
+        
+        // Запуск таймера
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                
+                timeLeft--;
+                const seconds = timeLeft % 60;
+                const minutes = Math.floor(timeLeft / 60);
+                timerSpan.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        // Завершение игры
+        async function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            tapArea.style.pointerEvents = 'none';
+            tapArea.style.opacity = '0.5';
+            gameStatusSpan.className = 'game-status ended';
+            gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
+            shareBtn.style.display = 'block';
+            
+            // Финальное обновление счёта
+            await updateScore();
+            
+            // Показываем результат
+            tg.showAlert(`Игра окончена!\nВаш результат: ${score} тапов!\nПроверьте место в турнирной таблице!`);
+        }
         
         // Обновление счёта на сервере
         async function updateScore() {
@@ -136,14 +272,20 @@
                 const response = await fetch('/api/update-score', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId, score: score })
+                    body: JSON.stringify({ 
+                        user_id: userId, 
+                        username: username,
+                        full_name: fullName,
+                        score: score 
+                    })
                 });
                 const data = await response.json();
                 if (data.leaderboard) {
                     updateLeaderboard(data.leaderboard);
                 }
+                return data;
             } catch(e) {
-                console.error('Error:', e);
+                console.error('Error updating score:', e);
             }
         }
         
@@ -158,16 +300,72 @@
             leaderboard.forEach((player, index) => {
                 const item = document.createElement('div');
                 item.className = 'leaderboard-item';
+                const playerName = player.full_name || player.username || 'Player ' + player.user_id;
+                const playerScore = player.score || player.taps || 0;
+                
+                // Подсвечиваем текущего игрока
+                if (player.user_id == userId) {
+                    item.style.background = '#ffeaa7';
+                    item.style.fontWeight = 'bold';
+                }
+                
                 item.innerHTML = `
-                    <span>${index + 1}. ${player.username || 'Player ' + player.user_id}</span>
-                    <span>${player.score || player.taps || 0} 👆</span>
+                    <span>${index + 1}. ${playerName}</span>
+                    <span>${playerScore} 👆</span>
                 `;
                 leaderboardDiv.appendChild(item);
             });
         }
         
+        // Получение текущей игры
+        async function getCurrentGame() {
+            try {
+                const response = await fetch('/api/game/current');
+                const data = await response.json();
+                if (data.players_count) {
+                    playersCountSpan.textContent = data.players_count;
+                }
+                return data;
+            } catch(e) {
+                console.error('Error getting game:', e);
+            }
+        }
+        
+        // Присоединение к игре
+        async function joinGame() {
+            try {
+                const game = await getCurrentGame();
+                if (game.game_id) {
+                    const response = await fetch(`/api/game/${game.game_id}/join`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: userId })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        console.log('Joined game successfully!');
+                        if (data.players_count >= 50) {
+                            startGame();
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error('Error joining game:', e);
+            }
+        }
+        
+        // Начало игры
+        function startGame() {
+            gameActive = true;
+            gameStatusSpan.className = 'game-status playing';
+            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
+            startTimer();
+        }
+        
         // Обработка тапа
-        tapArea.addEventListener('click', () => {
+        tapArea.addEventListener('click', async () => {
+            if (!gameActive) return;
+            
             score++;
             scoreSpan.textContent = score;
             
@@ -179,7 +377,7 @@
             
             // Отправляем на сервер каждые 10 тапов
             if (score % 10 === 0) {
-                updateScore();
+                await updateScore();
             }
         });
         
@@ -192,17 +390,35 @@
                     updateLeaderboard(data.leaders);
                 }
             } catch(e) {
-                console.error('Error:', e);
+                console.error('Error getting leaderboard:', e);
             }
         }
         
-        // Загружаем лидерборд при старте
-        getLeaderboard();
+        // Поделиться результатом
+        shareBtn.addEventListener('click', () => {
+            tg.showAlert(`🏆 Мой результат в Tap Wars: ${score} тапов! 🏆\nПрисоединяйтесь!`);
+        });
         
-        // Обновляем каждые 5 секунд
-        setInterval(getLeaderboard, 5000);
+        // Инициализация игры
+        async function init() {
+            console.log('🚀 Tap Wars Mini App загружен!');
+            await getLeaderboard();
+            await joinGame();
+            
+            // Обновляем лидерборд каждые 3 секунды
+            setInterval(getLeaderboard, 3000);
+            
+            // Обновляем количество игроков каждые 2 секунды
+            setInterval(async () => {
+                const game = await getCurrentGame();
+                if (game.players_count >= 50 && !gameActive) {
+                    startGame();
+                }
+            }, 2000);
+        }
         
-        console.log('Tap Wars Mini App loaded!', 'User ID:', userId);
+        // Запуск
+        init();
     </script>
 </body>
 </html>
