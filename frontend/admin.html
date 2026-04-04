@@ -22,7 +22,6 @@
             margin: 0 auto;
         }
         
-        /* Login screen */
         .login-screen {
             display: flex;
             justify-content: center;
@@ -65,7 +64,6 @@
             cursor: pointer;
         }
         
-        /* Admin panel */
         .admin-panel {
             display: none;
         }
@@ -94,6 +92,8 @@
             padding: 8px 16px;
             border-radius: 8px;
             cursor: pointer;
+            color: white;
+            border: none;
         }
         
         .stats-grid {
@@ -239,7 +239,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- Login Screen -->
         <div id="login-screen" class="login-screen">
             <div class="login-card">
                 <h1>🔐 Вход в админку</h1>
@@ -248,14 +247,12 @@
             </div>
         </div>
         
-        <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel">
             <div class="header">
                 <h1>⚡ Tap Wars - Админ панель</h1>
-                <div class="logout-btn" onclick="logout()">🚪 Выйти</div>
+                <button class="logout-btn" onclick="logout()">🚪 Выйти</button>
             </div>
             
-            <!-- Stats -->
             <div class="stats-grid" id="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value" id="total-users">0</div>
@@ -275,19 +272,17 @@
                 </div>
             </div>
             
-            <!-- Tabs -->
             <div class="tabs">
                 <div class="tab active" data-tab="withdraw">💸 Запросы на вывод</div>
                 <div class="tab" data-tab="users">👥 Пользователи</div>
                 <div class="tab" data-tab="winners">🏆 Топ выигрышей</div>
             </div>
             
-            <!-- Withdraw Requests Tab -->
             <div id="tab-withdraw" class="tab-content active">
                 <div class="section">
                     <h2>💸 Активные запросы на вывод</h2>
                     <div id="withdraw-requests-list">
-                        <table>
+                        <table style="width:100%">
                             <thead>
                                 <tr><th>ID</th><th>Пользователь</th><th>Сумма</th><th>Дата</th><th>Действие</th></tr>
                             </thead>
@@ -297,7 +292,6 @@
                 </div>
             </div>
             
-            <!-- Users Tab -->
             <div id="tab-users" class="tab-content">
                 <div class="section">
                     <h2>👥 Список пользователей</h2>
@@ -306,7 +300,6 @@
                 </div>
             </div>
             
-            <!-- Winners Tab -->
             <div id="tab-winners" class="tab-content">
                 <div class="section">
                     <h2>🏆 Топ выигрышей</h2>
@@ -317,7 +310,6 @@
     </div>
     
     <script>
-        let authToken = null;
         let currentPage = 0;
         const limit = 20;
         
@@ -334,7 +326,6 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    authToken = data.token;
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('admin-panel').classList.add('active');
                     loadStats();
@@ -344,20 +335,20 @@
                     alert('Неверный пароль');
                 }
             } catch(e) {
-                alert('Ошибка соединения');
+                alert('Ошибка соединения: ' + e.message);
             }
         }
         
         function logout() {
-            authToken = null;
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('admin-panel').classList.remove('active');
             document.getElementById('admin-password').value = '';
         }
         
         async function loadStats() {
+            const password = document.getElementById('admin-password').value;
             try {
-                const response = await fetch(`/admin/stats?password=${encodeURIComponent(document.getElementById('admin-password').value)}`);
+                const response = await fetch(`/admin/stats?password=${encodeURIComponent(password)}`);
                 const data = await response.json();
                 
                 document.getElementById('total-users').textContent = data.total_users || 0;
@@ -447,7 +438,7 @@
                 
                 const usersList = document.getElementById('users-list');
                 
-                let html = '<table><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Тапов</th><th>Игр</th><th>Регистрация</th></tr></thead><tbody>';
+                let html = '<table style="width:100%"><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Тапов</th><th>Игр</th><th>Регистрация</th></tr></thead><tbody>';
                 
                 if (data.users && data.users.length > 0) {
                     data.users.forEach(user => {
@@ -467,7 +458,6 @@
                 html += '</tbody></table>';
                 usersList.innerHTML = html;
                 
-                // Pagination
                 const pagination = document.getElementById('users-pagination');
                 pagination.innerHTML = `
                     <button onclick="loadUsers(${page - 1})" ${page === 0 ? 'disabled' : ''}>← Назад</button>
@@ -479,7 +469,6 @@
             }
         }
         
-        // Tabs
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -503,7 +492,7 @@
                 const winnersList = document.getElementById('winners-list');
                 
                 if (data.top_winners && data.top_winners.length > 0) {
-                    let html = '<table><thead><tr><th>#</th><th>Игрок</th><th>Сумма выигрышей</th></tr></thead><tbody>';
+                    let html = '<table style="width:100%"><thead><tr><th>#</th><th>Игрок</th><th>Сумма выигрышей</th></tr></thead><tbody>';
                     data.top_winners.forEach((winner, idx) => {
                         html += `<tr>
                             <td>${idx + 1}</td>
