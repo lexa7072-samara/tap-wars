@@ -36,7 +36,7 @@ class Database:
             )
         ''')
         
-        # Таблица игр (обновлённая с game_type)
+        # Таблица игр
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS games (
                 game_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +72,22 @@ class Database:
                 game_id INTEGER,
                 amount INTEGER,
                 claimed BOOLEAN DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(user_id),
+                FOREIGN KEY (game_id) REFERENCES games(game_id)
+            )
+        ''')
+        
+        # Таблица запросов на вывод
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS withdraw_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                amount INTEGER,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(user_id)
             )
         ''')
         
@@ -90,7 +105,7 @@ class Database:
         cursor = self.connection.cursor()
         cursor.execute('''
             UPDATE users 
-            SET username = ?, full_name = ?, total_score = total_score + ?
+            SET username = ?, full_name = ?, total_score = total_score + ?, games_played = games_played + 1
             WHERE user_id = ?
         ''', (username, full_name, score, user_id))
         self.connection.commit()
@@ -113,7 +128,6 @@ class Database:
         return None
     
     async def create_game(self, game_type: str, status: str, max_players: int, ticket_price: int, prize_pool: int, duration: int, start_time, end_time) -> int:
-        """Создать новую игру с указанием типа"""
         cursor = self.connection.cursor()
         cursor.execute('''
             INSERT INTO games (game_type, status, max_players, ticket_price, prize_pool, duration, start_time, end_time)
@@ -123,7 +137,6 @@ class Database:
         return cursor.lastrowid
     
     async def get_active_game(self, game_type: str = None) -> Dict:
-        """Получить активную игру (можно фильтровать по типу)"""
         cursor = self.connection.cursor()
         if game_type:
             cursor.execute('SELECT * FROM games WHERE game_type = ? AND (status = "waiting" OR status = "active") LIMIT 1', (game_type,))
@@ -166,8 +179,11 @@ class Database:
     
     async def add_winnings(self, user_id: int, amount: int, game_id: int):
         cursor = self.connection.cursor()
-        cursor.execute('INSERT INTO winnings (user_id, game_id, amount) VALUES (?, ?, ?)', (user_id, game_id, amount))
+        cursor.execute('INSERT INTO winnings (user_id, game_id, amount, claimed) VALUES (?, ?, ?, 0)', (user_id, game_id, amount))
         self.connection.commit()
+        
+        # Автоматически зачисляем на баланс
+        await self.update_user_balance(user_id, amount)
     
     async def update_user_balance(self, user_id: int, amount: int):
         cursor = self.connection.cursor()
@@ -188,7 +204,6 @@ class Database:
     
     # Методы для работы с билетами
     async def check_user_ticket(self, user_id: int, game_type: str) -> bool:
-        """Проверить, есть ли у пользователя билет на игру"""
         cursor = self.connection.cursor()
         cursor.execute('''
             SELECT count FROM user_tickets 
@@ -198,7 +213,6 @@ class Database:
         return row is not None
     
     async def use_ticket(self, user_id: int, game_type: str):
-        """Списать билет"""
         cursor = self.connection.cursor()
         cursor.execute('''
             UPDATE user_tickets 
@@ -208,7 +222,6 @@ class Database:
         self.connection.commit()
     
     async def add_ticket(self, user_id: int, game_type: str, count: int = 1):
-        """Добавить билет пользователю"""
         cursor = self.connection.cursor()
         cursor.execute('''
             INSERT INTO user_tickets (user_id, game_type, count)
@@ -217,3 +230,61 @@ class Database:
             DO UPDATE SET count = count + ?
         ''', (user_id, game_type, count, count))
         self.connection.commit()
+    
+    # ========== МЕТОДЫ ДЛЯ ВЫВОДА СРЕДСТВ ==========
+    
+    async def withdraw_stars(self, user_id: int, amount: int) -> bool:
+        """Списать звезды с баланса пользователя для вывода"""
+        cursor = self.connection.cursor()
+        
+        cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+        row = cursor.fetchone()
+        
+        if not row or row[0] < amount:
+            return False
+        
+        cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (amount, user_id))
+        self.connection.commit()
+        
+        cursor.execute('''
+            INSERT INTO withdraw_requests (user_id, amount, status, created_at)
+            VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)
+        ''', (user_id, amount))
+        self.connection.commit()
+        
+        return True
+    
+    async def get_withdraw_history(self, user_id: int) -> List[Dict]:
+        """Получить историю выводов пользователя"""
+        cursor = self.connection.cursor()
+        cursor.execute('''
+            SELECT * FROM withdraw_requests 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC
+        ''', (user_id,))
+        rows = cursor.fetchall()
+        
+        return [{
+            "id": r[0],
+            "amount": r[2],
+            "status": r[3],
+            "created_at": r[4],
+            "completed_at": r[5]
+        } for r in rows]
+    
+    async def get_withdraw_info(self, user_id: int) -> Dict:
+        """Получить информацию о доступных выводах"""
+        cursor = self.connection.cursor()
+        
+        # Сумма в обработке
+        cursor.execute('''
+            SELECT SUM(amount) FROM withdraw_requests 
+            WHERE user_id = ? AND status = 'pending'
+        ''', (user_id,))
+        pending = cursor.fetchone()[0] or 0
+        
+        return {
+            "min_amount": 100,
+            "fee": 0,
+            "pending": pending
+        }
