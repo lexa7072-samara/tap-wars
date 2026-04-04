@@ -16,107 +16,192 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         
-        .game-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 20px;
-            max-width: 400px;
-            width: 100%;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        /* Экран выбора игры */
+        .selector-screen {
+            display: block;
+        }
+        
+        .selector-screen.hide {
+            display: none;
         }
         
         h1 {
             text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 32px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .game-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        
+        .game-card:active {
+            transform: scale(0.98);
+        }
+        
+        .game-card.mini {
+            border-left: 5px solid #00b894;
+        }
+        
+        .game-card.standard {
+            border-left: 5px solid #0984e3;
+        }
+        
+        .game-card.vip {
+            border-left: 5px solid #6c5ce7;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .game-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .game-price {
+            font-size: 20px;
+            font-weight: bold;
+            background: #fdcb6e;
+            padding: 5px 12px;
+            border-radius: 20px;
+            color: #2d3436;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3436;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .prize {
+            color: #00b894;
+        }
+        
+        .game-description {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .join-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .join-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* Экран игры */
+        .game-screen {
+            display: none;
+        }
+        
+        .game-screen.active {
+            display: block;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            font-size: 14px;
         }
         
         .player-info {
             text-align: center;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-            padding: 5px;
-            background: #f0f0f0;
-            border-radius: 10px;
-        }
-        
-        .tap-area {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            font-size: 48px;
-            font-weight: bold;
             color: white;
-            cursor: pointer;
-            margin: 20px 0;
-            transition: transform 0.05s;
-            user-select: none;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            margin-bottom: 15px;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 14px;
         }
         
-        .tap-area:active {
-            transform: scale(0.95);
-        }
-        
-        .stats {
+        .stats-panel {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3436;
         }
         
         .timer {
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #764ba2;
-        }
-        
-        .leaderboard {
-            margin-top: 20px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 10px;
-        }
-        
-        .leaderboard h3 {
-            margin-bottom: 10px;
-            color: #333;
-            text-align: center;
-        }
-        
-        #leaderboard-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .leaderboard-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .score {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: bold;
             text-align: center;
-            color: #764ba2;
-            margin: 10px 0;
+            margin: 15px 0;
+            color: #fdcb6e;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
         .game-status {
@@ -135,6 +220,13 @@
         .game-status.playing {
             background: #55efc4;
             color: #006266;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
         
         .game-status.ended {
@@ -142,223 +234,360 @@
             color: #2d3436;
         }
         
+        .tap-area {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.05s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tap-area:active {
+            transform: scale(0.95);
+        }
+        
+        .score {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            color: white;
+        }
+        
+        .leaderboard {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .leaderboard h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #2d3436;
+        }
+        
+        .leaderboard-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
         button {
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 12px;
             border-radius: 10px;
             font-size: 16px;
             cursor: pointer;
             margin-top: 10px;
             width: 100%;
-        }
-        
-        button:active {
-            transform: scale(0.98);
+            font-weight: bold;
         }
         
         .buy-btn {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
         
+        .buy-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
         .share-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00b894 0%, #55efc4 100%);
         }
         
         .restart-btn {
             background: #ff6b6b;
-            margin-top: 5px;
-        }
-        
-        .has-ticket {
-            background: #00b894;
-            cursor: default;
-        }
-        
-        .has-ticket:active {
-            transform: none;
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>⚡ TAP WARS ⚡</h1>
-        
-        <div class="player-info" id="player-info">
-            Загрузка...
+    <div class="container">
+        <!-- Экран выбора игры -->
+        <div id="selector-screen" class="selector-screen">
+            <h1>⚡ TAP WARS ⚡</h1>
+            <div id="games-list"></div>
         </div>
         
-        <div class="stats">
-            <div>💰 Баланс: <span id="balance">0</span> ⭐</div>
-            <div>👥 Игроков: <span id="players-count">0</span>/50</div>
+        <!-- Экран игры -->
+        <div id="game-screen" class="game-screen">
+            <button class="back-btn" id="back-btn">← Назад</button>
+            
+            <div class="player-info" id="player-info"></div>
+            
+            <div class="stats-panel">
+                <div class="stat">
+                    <div class="stat-label">💰 Баланс</div>
+                    <div class="stat-value" id="balance">0 ⭐</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">👥 Игроки</div>
+                    <div class="stat-value"><span id="players-count">0</span>/<span id="max-players">0</span></div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">🏆 Приз</div>
+                    <div class="stat-value" id="prize-pool">0 ⭐</div>
+                </div>
+            </div>
+            
+            <div class="timer" id="timer">⏱️ 00:00</div>
+            
+            <div class="game-status waiting" id="game-status">⏳ Ожидание игроков...</div>
+            
+            <div class="tap-area" id="tap-area">👆</div>
+            
+            <div class="score">🎯 Счёт: <span id="score">0</span></div>
+            
+            <button class="buy-btn" id="buy-ticket-btn" style="display: none;">🎫 Купить билет</button>
+            
+            <div class="leaderboard">
+                <h3>🏆 Топ игроков</h3>
+                <div class="leaderboard-list" id="leaderboard-list">Загрузка...</div>
+            </div>
         </div>
-        
-        <div class="timer" id="timer">
-            ⏱️ 60:00
-        </div>
-        
-        <div class="game-status waiting" id="game-status">
-            ⏳ Ожидание игроков...
-        </div>
-        
-        <div class="tap-area" id="tap-area">
-            👆 ТАПАЙ 👆
-        </div>
-        
-        <div class="score">
-            🎯 Счёт: <span id="score">0</span>
-        </div>
-        
-        <button class="buy-btn" id="buy-ticket-btn">🎫 Купить билет (50 ⭐)</button>
-        
-        <div class="leaderboard">
-            <h3>🏆 Топ игроков</h3>
-            <div id="leaderboard-list">Загрузка...</div>
-        </div>
-        
-        <button class="share-btn" id="share-btn" style="display: none;">📤 Поделиться результатом</button>
-        <button class="restart-btn" id="restart-btn" style="display: none;">🔄 Новая игра</button>
     </div>
     
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
-        tg.enableClosingConfirmation();
         
-        // Получаем данные пользователя из Telegram
         const userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 10000);
         const username = tg.initDataUnsafe?.user?.username || 'Player';
         const firstName = tg.initDataUnsafe?.user?.first_name || '';
         const lastName = tg.initDataUnsafe?.user?.last_name || '';
         const fullName = (firstName + ' ' + lastName).trim() || username;
         
-        // Показываем информацию о пользователе
-        document.getElementById('player-info').innerHTML = `
-            👤 ${fullName} (@${username})<br>
-            🆔 ID: ${userId}
-        `;
-        
-        console.log('👤 Пользователь:', fullName, 'Username:', username, 'ID:', userId);
-        
-        // Игровые переменные
+        let selectedGameType = null;
+        let selectedGameConfig = null;
+        let currentGameId = null;
         let score = 0;
         let gameActive = false;
         let hasTicket = false;
         let timeLeft = 60;
         let timerInterval = null;
         let gameStarted = false;
-        let currentGameId = null;
         
         // Элементы DOM
+        const selectorScreen = document.getElementById('selector-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gamesList = document.getElementById('games-list');
+        const backBtn = document.getElementById('back-btn');
         const tapArea = document.getElementById('tap-area');
         const scoreSpan = document.getElementById('score');
-        const leaderboardDiv = document.getElementById('leaderboard-list');
         const timerSpan = document.getElementById('timer');
         const gameStatusSpan = document.getElementById('game-status');
         const playersCountSpan = document.getElementById('players-count');
+        const maxPlayersSpan = document.getElementById('max-players');
+        const prizePoolSpan = document.getElementById('prize-pool');
         const buyTicketBtn = document.getElementById('buy-ticket-btn');
-        const shareBtn = document.getElementById('share-btn');
-        const restartBtn = document.getElementById('restart-btn');
+        const leaderboardDiv = document.getElementById('leaderboard-list');
+        const playerInfoSpan = document.getElementById('player-info');
         
-        // ========== ФУНКЦИЯ ПОКУПКИ БИЛЕТА ==========
-        async function buyTicket() {
+        playerInfoSpan.innerHTML = `👤 ${fullName} (@${username})`;
+        
+        // Загрузка типов игр
+        async function loadGameTypes() {
             try {
-                // Получаем текущую игру
-                const gameResponse = await fetch('/api/game/current');
-                const game = await gameResponse.json();
-                currentGameId = game.game_id;
+                const response = await fetch('/api/game/types');
+                const data = await response.json();
+                displayGames(data.types);
+            } catch(e) {
+                console.error('Error:', e);
+                // Запасной вариант - локальные данные
+                displayGames({
+                    mini: { name: "Мини", emoji: "🟢", ticket_price: 10, max_players: 10, prize_pool: 60, duration: 30, description: "Быстрая игра" },
+                    standard: { name: "Стандарт", emoji: "🔵", ticket_price: 50, max_players: 20, prize_pool: 750, duration: 60, description: "Классическая битва" },
+                    vip: { name: "VIP", emoji: "🟣", ticket_price: 100, max_players: 10, prize_pool: 750, duration: 60, description: "Элитная игра" }
+                });
+            }
+        }
+        
+        function displayGames(types) {
+            gamesList.innerHTML = '';
+            
+            const order = ['mini', 'standard', 'vip'];
+            for (const key of order) {
+                if (!types[key]) continue;
+                const config = types[key];
+                const card = document.createElement('div');
+                card.className = `game-card ${key}`;
+                card.innerHTML = `
+                    <div class="game-header">
+                        <span class="game-title">${config.emoji} ${config.name}</span>
+                        <span class="game-price">${config.ticket_price} ⭐</span>
+                    </div>
+                    <div class="game-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${config.max_players}</div>
+                            <div class="stat-label">игроков</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value prize">${config.prize_pool} ⭐</div>
+                            <div class="stat-label">призовой фонд</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${config.duration} сек</div>
+                            <div class="stat-label">длительность</div>
+                        </div>
+                    </div>
+                    <div class="game-description">${config.description}</div>
+                    <button class="join-btn" data-type="${key}">Выбрать</button>
+                `;
                 
-                // Создаём инвойс
+                const joinBtn = card.querySelector('.join-btn');
+                joinBtn.onclick = () => selectGame(key, config);
+                
+                gamesList.appendChild(card);
+            }
+        }
+        
+        async function selectGame(type, config) {
+            selectedGameType = type;
+            selectedGameConfig = config;
+            
+            try {
+                const response = await fetch('/api/game/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ game_type: type })
+                });
+                const data = await response.json();
+                currentGameId = data.game_id;
+            } catch(e) {
+                currentGameId = Date.now();
+            }
+            
+            await checkTicket();
+            
+            selectorScreen.classList.add('hide');
+            gameScreen.classList.add('active');
+            
+            maxPlayersSpan.textContent = config.max_players;
+            prizePoolSpan.textContent = config.prize_pool;
+            timeLeft = config.duration;
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerSpan.textContent = `⏱️ ${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            await getCurrentGame();
+            updateGameInfoInterval = setInterval(updateGameInfo, 2000);
+        }
+        
+        async function checkTicket() {
+            hasTicket = false;
+            if (!hasTicket) {
+                buyTicketBtn.style.display = 'block';
+                buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                buyTicketBtn.classList.remove('disabled');
+                tapArea.style.opacity = '0.5';
+                tapArea.style.pointerEvents = 'none';
+            } else {
+                buyTicketBtn.style.display = 'none';
+                tapArea.style.opacity = '1';
+                tapArea.style.pointerEvents = 'auto';
+                await joinGame();
+            }
+        }
+        
+        buyTicketBtn.onclick = async () => {
+            if (buyTicketBtn.classList.contains('disabled')) return;
+            buyTicketBtn.classList.add('disabled');
+            buyTicketBtn.textContent = '⏳ Обработка...';
+            
+            try {
                 const response = await fetch('/api/payment/create-invoice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: userId,
                         game_id: currentGameId,
-                        amount: 50
+                        amount: selectedGameConfig.ticket_price
                     })
                 });
                 
                 const data = await response.json();
                 
                 if (data.success && data.invoice_link) {
-                    // Открываем платежное окно Telegram
                     tg.openInvoice(data.invoice_link, async (status) => {
                         if (status === 'paid') {
-                            console.log('✅ Payment successful!');
-                            tg.showAlert('✅ Билет куплен! Присоединяйся к игре!');
+                            tg.showAlert('✅ Билет куплен!');
                             hasTicket = true;
-                            buyTicketBtn.textContent = '✅ Билет куплен';
-                            buyTicketBtn.className = 'has-ticket';
-                            buyTicketBtn.disabled = true;
+                            buyTicketBtn.style.display = 'none';
+                            tapArea.style.opacity = '1';
+                            tapArea.style.pointerEvents = 'auto';
                             await joinGame();
-                        } else if (status === 'failed') {
-                            tg.showAlert('❌ Ошибка оплаты. Попробуй позже.');
-                        } else if (status === 'cancelled') {
-                            console.log('Payment cancelled');
+                        } else {
+                            buyTicketBtn.classList.remove('disabled');
+                            buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
                         }
                     });
                 } else {
-                    tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось создать инвойс'));
+                    tg.showAlert('❌ Ошибка при создании инвойса');
+                    buyTicketBtn.classList.remove('disabled');
+                    buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
                 }
             } catch(e) {
                 console.error('Buy ticket error:', e);
-                tg.showAlert('❌ Ошибка при покупке билета');
+                tg.showAlert('❌ Ошибка соединения');
+                buyTicketBtn.classList.remove('disabled');
+                buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+            }
+        };
+        
+        async function joinGame() {
+            try {
+                const response = await fetch(`/api/game/${currentGameId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    if (data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                        startGame();
+                    }
+                }
+            } catch(e) {
+                console.error('Join error:', e);
             }
         }
         
-        // ========== ФУНКЦИЯ ШЕРИНГА ==========
-        function shareScore() {
-            tg.showAlert(`🏆 Мой рекорд в Tap Wars: ${score} тапов! 🏆\n\nПрисоединяйтесь к игре!`);
-            
-            tg.showPopup({
-                title: 'Поделиться результатом',
-                message: `Я набрал ${score} тапов в Tap Wars! А сколько наберёшь ты?`,
-                buttons: [
-                    {id: 'share', type: 'default', text: '📤 Поделиться'},
-                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
-                ]
-            }, (buttonId) => {
-                if (buttonId === 'share') {
-                    tg.sendData(JSON.stringify({
-                        action: 'share',
-                        score: score
-                    }));
-                }
-            });
-        }
-        
-        // ========== ПЕРЕЗАПУСК ИГРЫ ==========
-        function restartGame() {
-            score = 0;
-            timeLeft = 60;
+        function startGame() {
             gameActive = true;
             gameStarted = true;
-            scoreSpan.textContent = '0';
-            timerSpan.textContent = '⏱️ 60:00';
-            tapArea.style.pointerEvents = 'auto';
-            tapArea.style.opacity = '1';
             gameStatusSpan.className = 'game-status playing';
             gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
-            shareBtn.style.display = 'none';
-            restartBtn.style.display = 'none';
-            
-            if (timerInterval) clearInterval(timerInterval);
             startTimer();
         }
         
-        // ========== ТАЙМЕР ==========
         function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 if (!gameActive) return;
                 
                 if (timeLeft > 0) {
                     timeLeft--;
-                    const seconds = timeLeft % 60;
-                    const minutes = Math.floor(timeLeft / 60);
-                    timerSpan.textContent = `⏱️ ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    const mins = Math.floor(timeLeft / 60);
+                    const secs = timeLeft % 60;
+                    timerSpan.textContent = `⏱️ ${mins}:${secs.toString().padStart(2, '0')}`;
                 }
                 
                 if (timeLeft <= 0) {
@@ -367,27 +596,22 @@
             }, 1000);
         }
         
-        // ========== ЗАВЕРШЕНИЕ ИГРЫ ==========
         async function endGame() {
             gameActive = false;
             gameStarted = false;
-            clearInterval(timerInterval);
+            if (timerInterval) clearInterval(timerInterval);
             tapArea.style.pointerEvents = 'none';
             tapArea.style.opacity = '0.5';
             gameStatusSpan.className = 'game-status ended';
             gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
-            shareBtn.style.display = 'block';
-            restartBtn.style.display = 'block';
             
             await updateScore();
-            
-            tg.showAlert(`🏁 Игра окончена!\n\n📊 Ваш результат: ${score} тапов!\n🏆 Проверьте своё место в турнирной таблице!`);
+            tg.showAlert(`🏁 Игра окончена!\n📊 Ваш результат: ${score} тапов!`);
         }
         
-        // ========== ОБНОВЛЕНИЕ СЧЁТА ==========
         async function updateScore() {
             try {
-                const response = await fetch('/api/update-score', {
+                await fetch('/api/update-score', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -397,101 +621,57 @@
                         score: score 
                     })
                 });
-                const data = await response.json();
-                if (data.leaderboard) {
-                    updateLeaderboard(data.leaderboard);
-                }
-                return data;
             } catch(e) {
-                console.error('Error updating score:', e);
+                console.error('Update error:', e);
             }
         }
         
-        // ========== ЛИДЕРБОРД ==========
-        function updateLeaderboard(leaderboard) {
-            if (!leaderboard || leaderboard.length === 0) {
-                leaderboardDiv.innerHTML = 'Нет данных';
-                return;
-            }
-            
-            leaderboardDiv.innerHTML = '';
-            leaderboard.forEach((player, index) => {
-                const item = document.createElement('div');
-                item.className = 'leaderboard-item';
-                const playerName = player.full_name || player.username || 'Player ' + player.user_id;
-                const playerScore = player.score || 0;
-                
-                if (player.user_id == userId) {
-                    item.style.background = '#ffeaa7';
-                    item.style.fontWeight = 'bold';
-                }
-                
-                let medal = '';
-                if (index === 0) medal = '🥇 ';
-                else if (index === 1) medal = '🥈 ';
-                else if (index === 2) medal = '🥉 ';
-                
-                item.innerHTML = `
-                    <span>${medal}${index + 1}. ${playerName}</span>
-                    <span>${playerScore} 👆</span>
-                `;
-                leaderboardDiv.appendChild(item);
-            });
-        }
-        
-        // ========== ПОЛУЧЕНИЕ ИГРЫ ==========
         async function getCurrentGame() {
             try {
                 const response = await fetch('/api/game/current');
                 const data = await response.json();
-                currentGameId = data.game_id;
-                if (data.players_count) {
-                    playersCountSpan.textContent = data.players_count;
-                }
+                playersCountSpan.textContent = data.players_count || 0;
                 return data;
             } catch(e) {
-                console.error('Error getting game:', e);
+                console.error('Get game error:', e);
             }
         }
         
-        // ========== ПРИСОЕДИНЕНИЕ К ИГРЕ ==========
-        async function joinGame() {
-            if (!hasTicket) {
-                buyTicketBtn.style.display = 'block';
-                return;
+        let updateGameInfoInterval = null;
+        async function updateGameInfo() {
+            const game = await getCurrentGame();
+            if (game && game.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                startGame();
             }
-            
+        }
+        
+        async function getLeaderboard() {
             try {
-                const response = await fetch(`/api/game/${currentGameId}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId })
-                });
+                const response = await fetch('/api/leaderboard');
                 const data = await response.json();
-                if (data.success) {
-                    console.log('Joined game successfully!');
-                    if (data.players_count >= 50 && !gameStarted) {
-                        startGame();
-                    }
+                if (data.leaders) {
+                    leaderboardDiv.innerHTML = '';
+                    data.leaders.slice(0, 10).forEach((player, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+                        let medal = '';
+                        if (index === 0) medal = '🥇 ';
+                        else if (index === 1) medal = '🥈 ';
+                        else if (index === 2) medal = '🥉 ';
+                        item.innerHTML = `
+                            <span>${medal}${index + 1}. ${player.full_name || player.username}</span>
+                            <span>${player.score || 0} 👆</span>
+                        `;
+                        leaderboardDiv.appendChild(item);
+                    });
                 }
             } catch(e) {
-                console.error('Error joining game:', e);
+                console.error('Leaderboard error:', e);
             }
         }
         
-        // ========== НАЧАЛО ИГРЫ ==========
-        function startGame() {
-            gameActive = true;
-            gameStarted = true;
-            gameStatusSpan.className = 'game-status playing';
-            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
-            startTimer();
-        }
-        
-        // ========== ОБРАБОТКА ТАПА ==========
-        tapArea.addEventListener('click', async () => {
+        tapArea.addEventListener('click', () => {
             if (!gameActive) return;
-            
             score++;
             scoreSpan.textContent = score;
             
@@ -500,45 +680,23 @@
                 tapArea.style.transform = 'scale(1)';
             }, 100);
             
-            if (score % 10 === 0) {
-                await updateScore();
-            }
+            if (score % 10 === 0) updateScore();
         });
         
-        // ========== ПОЛУЧЕНИЕ ЛИДЕРБОРДА ==========
-        async function getLeaderboard() {
-            try {
-                const response = await fetch('/api/leaderboard');
-                const data = await response.json();
-                if (data.leaders) {
-                    updateLeaderboard(data.leaders);
-                }
-            } catch(e) {
-                console.error('Error getting leaderboard:', e);
-            }
-        }
+        backBtn.onclick = () => {
+            if (timerInterval) clearInterval(timerInterval);
+            if (updateGameInfoInterval) clearInterval(updateGameInfoInterval);
+            gameActive = false;
+            gameStarted = false;
+            score = 0;
+            scoreSpan.textContent = '0';
+            selectorScreen.classList.remove('hide');
+            gameScreen.classList.remove('active');
+            loadGameTypes();
+        };
         
-        // ========== КНОПКИ ==========
-        buyTicketBtn.onclick = buyTicket;
-        shareBtn.onclick = shareScore;
-        restartBtn.onclick = restartGame;
-        
-        // ========== ИНИЦИАЛИЗАЦИЯ ==========
-        async function init() {
-            console.log('🚀 Tap Wars Mini App загружен!');
-            await getLeaderboard();
-            await getCurrentGame();
-            
-            setInterval(getLeaderboard, 3000);
-            setInterval(async () => {
-                const game = await getCurrentGame();
-                if (game.players_count >= 50 && !gameStarted && !gameActive) {
-                    startGame();
-                }
-            }, 2000);
-        }
-        
-        init();
+        loadGameTypes();
+        setInterval(getLeaderboard, 3000);
     </script>
 </body>
 </html>
