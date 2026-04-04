@@ -4,6 +4,8 @@ import urllib.parse
 from typing import Dict, List
 from pathlib import Path
 from dotenv import load_dotenv
+# Определяем базовую директорию проекта (на уровень выше папки backend)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
