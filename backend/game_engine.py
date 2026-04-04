@@ -1,16 +1,14 @@
 import asyncio
-import random
-from typing import Dict, List, Optional
+from typing import Dict, List
 from datetime import datetime
 from .game_config import GAME_TYPES
 
 class GameEngine:
     def __init__(self, db):
         self.db = db
-        self.active_games = {}  # {game_id: game_state}
+        self.active_games = {}
         
     async def create_new_game(self, game_type: str = "standard") -> int:
-        """Создать новую игру определённого типа"""
         config = GAME_TYPES.get(game_type, GAME_TYPES["standard"])
         
         game_id = await self.db.create_game(
@@ -38,7 +36,6 @@ class GameEngine:
         return game_id
     
     async def join_game(self, game_id: int, user_id: int) -> bool:
-        """Присоединить игрока к игре"""
         if game_id not in self.active_games:
             return False
             
@@ -50,7 +47,6 @@ class GameEngine:
         if len(game["players"]) >= game["config"]["max_players"]:
             return False
             
-        # Проверяем, есть ли у пользователя билет
         has_ticket = await self.db.check_user_ticket(user_id, game["game_type"])
         if not has_ticket:
             return False
@@ -58,14 +54,12 @@ class GameEngine:
         game["players"].append(user_id)
         game["taps"][user_id] = 0
         
-        # Списываем билет
         await self.db.use_ticket(user_id, game["game_type"])
         await self.db.add_player_to_game(game_id, user_id)
         
         return True
     
     async def add_tap(self, game_id: int, user_id: int, multiplier: float = 1.0) -> int:
-        """Добавить тап игроку"""
         if game_id not in self.active_games:
             return 0
             
@@ -82,7 +76,6 @@ class GameEngine:
         return game["taps"][user_id]
     
     async def check_game_start(self, game_id: int) -> bool:
-        """Проверить, нужно ли начать игру"""
         if game_id not in self.active_games:
             return False
             
@@ -95,7 +88,6 @@ class GameEngine:
         return False
     
     async def start_game(self, game_id: int):
-        """Начать игру"""
         if game_id not in self.active_games:
             return
             
@@ -105,11 +97,9 @@ class GameEngine:
         
         await self.db.update_game_status(game_id, "active")
         
-        # Запустить таймер
         asyncio.create_task(self.end_game_countdown(game_id))
     
     async def end_game_countdown(self, game_id: int):
-        """Обратный отсчет до конца игры"""
         if game_id not in self.active_games:
             return
             
@@ -120,7 +110,6 @@ class GameEngine:
         await self.end_game(game_id)
     
     async def end_game(self, game_id: int):
-        """Завершить игру и начислить призы"""
         if game_id not in self.active_games:
             return
             
@@ -128,34 +117,27 @@ class GameEngine:
         game["status"] = "ended"
         game["end_time"] = datetime.now()
         
-        # Получить топ игроков
         sorted_players = sorted(game["taps"].items(), key=lambda x: x[1], reverse=True)
         prize_distribution = game["config"]["prize_distribution"]
         top_count = len(prize_distribution)
         top_players = sorted_players[:top_count]
         
-        # Распределить призы
         for i, (user_id, taps) in enumerate(top_players):
             prize = prize_distribution[i] if i < len(prize_distribution) else 0
             await self.db.add_winnings(user_id, prize, game_id)
-            await self.db.update_user_balance(user_id, prize)
         
         await self.db.update_game_status(game_id, "ended")
         
-        # Очистить активную игру
         del self.active_games[game_id]
         
-        # Создать новую игру того же типа
         await self.create_new_game(game["game_type"])
     
     async def get_game_state(self, game_id: int) -> Dict:
-        """Получить текущее состояние игры"""
         if game_id not in self.active_games:
             return {}
             
         game = self.active_games[game_id]
         
-        # Сортировка лидерборда
         leaderboard = sorted(
             [{"user_id": uid, "taps": taps} for uid, taps in game["taps"].items()],
             key=lambda x: x["taps"],
