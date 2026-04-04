@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tap Wars - Админ панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Login screen */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .login-card h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+        }
+        
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        /* Admin panel */
+        .admin-panel {
+            display: none;
+        }
+        
+        .admin-panel.active {
+            display: block;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #1a1a2e;
+        }
+        
+        .logout-btn {
+            background: #ff6b6b;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .section h2 {
+            margin-bottom: 15px;
+            color: #1a1a2e;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .status-pending {
+            color: #fdcb6e;
+            font-weight: bold;
+        }
+        
+        .status-completed {
+            color: #00b894;
+            font-weight: bold;
+        }
+        
+        .status-cancelled {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        .approve-btn {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        
+        .reject-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .pagination button {
+            padding: 8px 16px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            th, td {
+                font-size: 12px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="login-screen" class="login-screen">
+            <div class="login-card">
+                <h1>🔐 Вход в админку</h1>
+                <input type="password" id="admin-password" placeholder="Пароль">
+                <button onclick="login()">Войти</button>
+            </div>
+        </div>
+        
+        <!-- Admin Panel -->
+        <div id="admin-panel" class="admin-panel">
+            <div class="header">
+                <h1>⚡ Tap Wars - Админ панель</h1>
+                <div class="logout-btn" onclick="logout()">🚪 Выйти</div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-users">0</div>
+                    <div class="stat-label">Всего игроков</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-balance">0 ⭐</div>
+                    <div class="stat-label">Баланс всех игроков</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-taps">0</div>
+                    <div class="stat-label">Всего тапов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="pending-withdraw">0 ⭐</div>
+                    <div class="stat-label">Ожидает вывода</div>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" data-tab="withdraw">💸 Запросы на вывод</div>
+                <div class="tab" data-tab="users">👥 Пользователи</div>
+                <div class="tab" data-tab="winners">🏆 Топ выигрышей</div>
+            </div>
+            
+            <!-- Withdraw Requests Tab -->
+            <div id="tab-withdraw" class="tab-content active">
+                <div class="section">
+                    <h2>💸 Активные запросы на вывод</h2>
+                    <div id="withdraw-requests-list">
+                        <table>
+                            <thead>
+                                <tr><th>ID</th><th>Пользователь</th><th>Сумма</th><th>Дата</th><th>Действие</th></tr>
+                            </thead>
+                            <tbody id="requests-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users Tab -->
+            <div id="tab-users" class="tab-content">
+                <div class="section">
+                    <h2>👥 Список пользователей</h2>
+                    <div id="users-list"></div>
+                    <div class="pagination" id="users-pagination"></div>
+                </div>
+            </div>
+            
+            <!-- Winners Tab -->
+            <div id="tab-winners" class="tab-content">
+                <div class="section">
+                    <h2>🏆 Топ выигрышей</h2>
+                    <div id="winners-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let authToken = null;
+        let currentPage = 0;
+        const limit = 20;
+        
+        async function login() {
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch('/admin/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('admin-panel').classList.add('active');
+                    loadStats();
+                    loadWithdrawRequests();
+                    loadUsers();
+                } else {
+                    alert('Неверный пароль');
+                }
+            } catch(e) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        function logout() {
+            authToken = null;
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('admin-panel').classList.remove('active');
+            document.getElementById('admin-password').value = '';
+        }
+        
+        async function loadStats() {
+            try {
+                const response = await fetch(`/admin/stats?password=${encodeURIComponent(document.getElementById('admin-password').value)}`);
+                const data = await response.json();
+                
+                document.getElementById('total-users').textContent = data.total_users || 0;
+                document.getElementById('total-balance').textContent = (data.total_balance || 0) + ' ⭐';
+                document.getElementById('total-taps').textContent = (data.total_taps || 0).toLocaleString();
+                document.getElementById('pending-withdraw').textContent = (data.pending_withdraw || 0) + ' ⭐';
+            } catch(e) {
+                console.error('Error loading stats:', e);
+            }
+        }
+        
+        async function loadWithdrawRequests() {
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch(`/admin/withdraw/requests?password=${encodeURIComponent(password)}`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('requests-tbody');
+                tbody.innerHTML = '';
+                
+                if (data.requests && data.requests.length > 0) {
+                    data.requests.forEach(req => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = req.id;
+                        row.insertCell(1).textContent = req.full_name || req.username;
+                        row.insertCell(2).textContent = req.amount + ' ⭐';
+                        row.insertCell(3).textContent = new Date(req.created_at).toLocaleString();
+                        const actionCell = row.insertCell(4);
+                        
+                        const approveBtn = document.createElement('button');
+                        approveBtn.textContent = '✅ Одобрить';
+                        approveBtn.className = 'approve-btn';
+                        approveBtn.onclick = () => processWithdraw(req.id, 'approve');
+                        
+                        const rejectBtn = document.createElement('button');
+                        rejectBtn.textContent = '❌ Отклонить';
+                        rejectBtn.className = 'reject-btn';
+                        rejectBtn.onclick = () => processWithdraw(req.id, 'reject');
+                        
+                        actionCell.appendChild(approveBtn);
+                        actionCell.appendChild(rejectBtn);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Нет активных запросов</td></tr>';
+                }
+            } catch(e) {
+                console.error('Error loading requests:', e);
+            }
+        }
+        
+        async function processWithdraw(requestId, action) {
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch('/admin/withdraw/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        password: password,
+                        request_id: requestId,
+                        action: action
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    loadWithdrawRequests();
+                    loadStats();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch(e) {
+                alert('Ошибка соединения');
+            }
+        }
+        
+        async function loadUsers(page = 0) {
+            const password = document.getElementById('admin-password').value;
+            currentPage = page;
+            
+            try {
+                const response = await fetch(`/admin/users?password=${encodeURIComponent(password)}&limit=${limit}&offset=${page * limit}`);
+                const data = await response.json();
+                
+                const usersList = document.getElementById('users-list');
+                
+                let html = '<table><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Тапов</th><th>Игр</th><th>Регистрация</th></tr></thead><tbody>';
+                
+                if (data.users && data.users.length > 0) {
+                    data.users.forEach(user => {
+                        html += `<tr>
+                            <td>${user.user_id}</td>
+                            <td>${user.full_name || user.username}</td>
+                            <td>${user.balance} ⭐</td>
+                            <td>${(user.total_score || 0).toLocaleString()}</td>
+                            <td>${user.games_played || 0}</td>
+                            <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                        </tr>`;
+                    });
+                } else {
+                    html += '<tr><td colspan="6" style="text-align:center;">Нет пользователей</td></tr>';
+                }
+                
+                html += '</tbody></table>';
+                usersList.innerHTML = html;
+                
+                // Pagination
+                const pagination = document.getElementById('users-pagination');
+                pagination.innerHTML = `
+                    <button onclick="loadUsers(${page - 1})" ${page === 0 ? 'disabled' : ''}>← Назад</button>
+                    <span style="padding: 8px;">Страница ${page + 1}</span>
+                    <button onclick="loadUsers(${page + 1})">Вперёд →</button>
+                `;
+            } catch(e) {
+                console.error('Error loading users:', e);
+            }
+        }
+        
+        // Tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const tabId = tab.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(`tab-${tabId}`).classList.add('active');
+                
+                if (tabId === 'winners') loadWinners();
+            });
+        });
+        
+        async function loadWinners() {
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch(`/admin/stats?password=${encodeURIComponent(password)}`);
+                const data = await response.json();
+                
+                const winnersList = document.getElementById('winners-list');
+                
+                if (data.top_winners && data.top_winners.length > 0) {
+                    let html = '<table><thead><tr><th>#</th><th>Игрок</th><th>Сумма выигрышей</th></tr></thead><tbody>';
+                    data.top_winners.forEach((winner, idx) => {
+                        html += `<tr>
+                            <td>${idx + 1}</td>
+                            <td>${winner.name}</td>
+                            <td>${winner.amount} ⭐</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    winnersList.innerHTML = html;
+                } else {
+                    winnersList.innerHTML = '<p style="text-align:center;">Нет данных</p>';
+                }
+            } catch(e) {
+                console.error('Error loading winners:', e);
+            }
+        }
+    </script>
+</body>
+</html>
