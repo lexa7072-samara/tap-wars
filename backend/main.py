@@ -212,11 +212,13 @@ async def create_invoice(user_id: int, game_id: int):
 
 @app.get("/")
 async def root():
-    return {
-        "message": "Tap Wars API is running!",
-        "docs": "/docs",
-        "health": "/health"
-    }
+    # Отдаём файл index.html из папки frontend
+    from fastapi.responses import FileResponse
+    index_path = BASE_DIR / "frontend" / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    else:
+        return {"message": "Tap Wars API is running!", "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
 async def health():
