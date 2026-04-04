@@ -202,8 +202,10 @@ class Database:
         rows = cursor.fetchall()
         return [{"user_id": r[0], "username": r[1], "full_name": r[2] or r[1], "score": r[3]} for r in rows]
     
-    # Методы для работы с билетами
+    # ========== МЕТОДЫ ДЛЯ РАБОТЫ С БИЛЕТАМИ ==========
+    
     async def check_user_ticket(self, user_id: int, game_type: str) -> bool:
+        """Проверить, есть ли у пользователя билет на игру"""
         cursor = self.connection.cursor()
         cursor.execute('''
             SELECT count FROM user_tickets 
@@ -213,6 +215,7 @@ class Database:
         return row is not None
     
     async def use_ticket(self, user_id: int, game_type: str):
+        """Списать билет"""
         cursor = self.connection.cursor()
         cursor.execute('''
             UPDATE user_tickets 
@@ -222,6 +225,7 @@ class Database:
         self.connection.commit()
     
     async def add_ticket(self, user_id: int, game_type: str, count: int = 1):
+        """Добавить билет пользователю"""
         cursor = self.connection.cursor()
         cursor.execute('''
             INSERT INTO user_tickets (user_id, game_type, count)
@@ -276,7 +280,6 @@ class Database:
         """Получить информацию о доступных выводах"""
         cursor = self.connection.cursor()
         
-        # Сумма в обработке
         cursor.execute('''
             SELECT SUM(amount) FROM withdraw_requests 
             WHERE user_id = ? AND status = 'pending'
@@ -288,3 +291,51 @@ class Database:
             "fee": 0,
             "pending": pending
         }
+    
+    # ========== МЕТОДЫ ДЛЯ АДМИНКИ ==========
+    
+    async def get_withdraw_requests(self, status: str = None) -> List[Dict]:
+        """Получить запросы на вывод (для админки)"""
+        cursor = self.connection.cursor()
+        if status:
+            cursor.execute('''
+                SELECT * FROM withdraw_requests WHERE status = ? ORDER BY created_at DESC
+            ''', (status,))
+        else:
+            cursor.execute('SELECT * FROM withdraw_requests ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        
+        return [{
+            "id": r[0],
+            "user_id": r[1],
+            "amount": r[2],
+            "status": r[3],
+            "created_at": r[4],
+            "completed_at": r[5]
+        } for r in rows]
+    
+    async def update_withdraw_status(self, request_id: int, status: str):
+        """Обновить статус запроса на вывод"""
+        cursor = self.connection.cursor()
+        if status == "completed":
+            cursor.execute('''
+                UPDATE withdraw_requests 
+                SET status = ?, completed_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (status, request_id))
+        else:
+            cursor.execute('''
+                UPDATE withdraw_requests 
+                SET status = ?
+                WHERE id = ?
+            ''', (status, request_id))
+        self.connection.commit()
+    
+    async def refund_withdraw(self, request_id: int):
+        """Вернуть звезды при отклонении запроса"""
+        cursor = self.connection.cursor()
+        cursor.execute('SELECT user_id, amount FROM withdraw_requests WHERE id = ?', (request_id,))
+        row = cursor.fetchone()
+        if row:
+            cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (row[1], row[0]))
+            self.connection.commit()
