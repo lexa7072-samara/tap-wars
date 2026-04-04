@@ -1,8 +1,6 @@
 import json
 import asyncio
 import urllib.parse
-import hashlib
-import hmac
 from typing import Dict, List
 from pathlib import Path
 from dotenv import load_dotenv
@@ -10,11 +8,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from database import Database
-from game_engine import GameEngine
+from .database import Database
+from .game_engine import GameEngine
 
 load_dotenv()
 
@@ -36,7 +33,7 @@ app.add_middleware(
 )
 
 # Подключаем статические файлы (frontend)
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "frontend")), name="static")
 
 # Инициализация
 db = Database()

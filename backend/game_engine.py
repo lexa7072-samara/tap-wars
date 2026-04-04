@@ -1,194 +1,174 @@
 import asyncio
+import random
+from typing import Dict, List, Optional
 from datetime import datetime
-from typing import Dict, List
-from config import GAME_CONFIG
-from database import Database
 
 class GameEngine:
-    def __init__(self, db: Database):
+    def __init__(self, db):
         self.db = db
-        self.active_games: Dict[int, Dict] = {}  # {game_id: {players, taps, boosts}}
-        self.game_tasks: Dict[int, asyncio.Task] = {}
-    
+        self.active_games = {}  # {game_id: game_state}
+        self.taps_buffer = {}   # {game_id: {user_id: taps}}
+        
     async def create_new_game(self) -> int:
         """Создать новую игру"""
         game_id = await self.db.create_game(
-            ticket_price=GAME_CONFIG["TICKET_PRICE"],
-            players_needed=GAME_CONFIG["PLAYERS_NEEDED"]
+            status="waiting",
+            max_players=50,
+            ticket_price=50,
+            prize_pool=2000,
+            start_time=None,
+            end_time=None
         )
+        
         self.active_games[game_id] = {
-            "players": {},
+            "status": "waiting",
+            "players": [],
             "taps": {},
-            "boosts": {},
-            "started": False
+            "start_time": None,
+            "end_time": None
         }
+        
         return game_id
     
     async def join_game(self, game_id: int, user_id: int) -> bool:
-        """Присоединиться к игре"""
-        success = await self.db.join_game(game_id, user_id)
-        if success:
-            if game_id not in self.active_games:
-                self.active_games[game_id] = {
-                    "players": {},
-                    "taps": {},
-                    "boosts": {},
-                    "started": False
-                }
-            self.active_games[game_id]["players"][user_id] = {
-                "taps": 0,
-                "multiplier": 1.0,
-                "boost_expires": None
-            }
-        return success
-    
-    async def check_game_start(self, game_id: int) -> bool:
-        """Проверить готовность к старту"""
-        players_count = await self.db.get_game_players_count(game_id)
-        if players_count >= GAME_CONFIG["PLAYERS_NEEDED"]:
-            await self.start_game(game_id)
-            return True
-        return False
-    
-    async def start_game(self, game_id: int):
-        """Запустить игру"""
-        await self.db.start_game(game_id)
-        self.active_games[game_id]["started"] = True
-        
-        # Запускаем таймер игры
-        task = asyncio.create_task(self.game_timer(game_id))
-        self.game_tasks[game_id] = task
-    
-    async def game_timer(self, game_id: int):
-        """Таймер игры (60 секунд)"""
-        duration = GAME_CONFIG["GAME_DURATION"]
-        
-        # Отправляем уведомления каждые 10 секунд
-        for elapsed in range(0, duration, 10):
-            await asyncio.sleep(10)
-            remaining = duration - elapsed - 10
-            if remaining > 0:
-                # Здесь можно отправлять уведомления игрокам
-                pass
-        
-        # Игра закончилась
-        await self.finish_game(game_id)
-    
-    async def add_tap(self, game_id: int, user_id: int, multiplier: float = 1.0) -> int:
-        """Добавить тап"""
-        if game_id not in self.active_games or not self.active_games[game_id]["started"]:
-            return 0
-        
-        if user_id not in self.active_games[game_id]["players"]:
-            return 0
-        
-        # Проверяем активные бусты
-        player = self.active_games[game_id]["players"][user_id]
-        current_multiplier = player.get("multiplier", 1.0)
-        
-        # Проверяем истечение буста
-        if player.get("boost_expires") and datetime.now() > player["boost_expires"]:
-            player["multiplier"] = 1.0
-            player["boost_expires"] = None
-            current_multiplier = 1.0
-        
-        # Бонус от рефералов
-        user = await self.db.get_user(user_id)
-        referral_bonus = 1 + (user["referrals"] * GAME_CONFIG["REFERRAL_TAP_BONUS"])
-        
-        # Итоговый множитель
-        total_multiplier = current_multiplier * multiplier * referral_bonus
-        taps = int(1 * total_multiplier)
-        
-        # Обновляем счётчик
-        player["taps"] += taps
-        await self.db.add_tap(game_id, user_id, taps)
-        
-        return taps
-    
-    async def apply_boost(self, game_id: int, user_id: int, boost_type: str) -> bool:
-        """Применить буст"""
-        if game_id not in self.active_games or not self.active_games[game_id]["started"]:
+        """Присоединить игрока к игре"""
+        if game_id not in self.active_games:
             return False
+            
+        game = self.active_games[game_id]
         
-        if user_id not in self.active_games[game_id]["players"]:
+        if user_id in game["players"]:
             return False
-        
-        player = self.active_games[game_id]["players"][user_id]
-        
-        if boost_type == "2x":
-            player["multiplier"] = 2.0
-            duration = 30
-        elif boost_type == "3x":
-            player["multiplier"] = 3.0
-            duration = 30
-        elif boost_type == "turbo":
-            player["multiplier"] = 5.0
-            duration = 10
-        else:
+            
+        if len(game["players"]) >= 50:
             return False
+            
+        game["players"].append(user_id)
+        game["taps"][user_id] = 0
         
-        from datetime import timedelta
-        player["boost_expires"] = datetime.now() + timedelta(seconds=duration)
+        await self.db.add_player_to_game(game_id, user_id)
         
         return True
     
-    async def finish_game(self, game_id: int):
-        """Завершить игру и подсчитать результаты"""
-        players = await self.db.get_game_players(game_id)
-        
-        # Сортируем по тапам
-        players.sort(key=lambda x: x["taps"], reverse=True)
-        
-        # Подсчитываем призовой фонд
-        ticket_price = GAME_CONFIG["TICKET_PRICE"]
-        total_pool = len(players) * ticket_price
-        prize_pool = int(total_pool * GAME_CONFIG["PRIZE_POOL_PERCENT"] / 100)
-        
-        # Распределяем призы
-        results = []
-        for position, player in enumerate(players, start=1):
-            prize = 0
-            if position <= 5:
-                prize_percent = GAME_CONFIG["PRIZES"].get(position, 0)
-                prize = int(prize_pool * prize_percent)
+    async def add_tap(self, game_id: int, user_id: int, multiplier: float = 1.0) -> int:
+        """Добавить тап игроку"""
+        if game_id not in self.active_games:
+            return 0
             
-            results.append({
-                "user_id": player["user_id"],
-                "position": position,
-                "taps": player["taps"],
-                "prize": prize
-            })
+        game = self.active_games[game_id]
         
-        # Сохраняем результаты
-        await self.db.finish_game(game_id, results)
+        if user_id not in game["taps"]:
+            return 0
+            
+        taps_added = int(1 * multiplier)
+        game["taps"][user_id] += taps_added
         
-        # Очищаем из памяти
-        if game_id in self.active_games:
-            del self.active_games[game_id]
-        if game_id in self.game_tasks:
-            del self.game_tasks[game_id]
+        await self.db.update_player_taps(game_id, user_id, game["taps"][user_id])
         
-        return results
+        return game["taps"][user_id]
+    
+    async def check_game_start(self, game_id: int) -> bool:
+        """Проверить, нужно ли начать игру"""
+        if game_id not in self.active_games:
+            return False
+            
+        game = self.active_games[game_id]
+        
+        if len(game["players"]) >= 50 and game["status"] == "waiting":
+            await self.start_game(game_id)
+            return True
+            
+        return False
+    
+    async def start_game(self, game_id: int):
+        """Начать игру"""
+        if game_id not in self.active_games:
+            return
+            
+        game = self.active_games[game_id]
+        game["status"] = "active"
+        game["start_time"] = datetime.now()
+        
+        await self.db.update_game_status(game_id, "active")
+        
+        # Запустить таймер на 60 секунд
+        asyncio.create_task(self.end_game_countdown(game_id))
+    
+    async def end_game_countdown(self, game_id: int):
+        """Обратный отсчет до конца игры"""
+        await asyncio.sleep(60)  # 60 секунд игра
+        
+        await self.end_game(game_id)
+    
+    async def end_game(self, game_id: int):
+        """Завершить игру и начислить призы"""
+        if game_id not in self.active_games:
+            return
+            
+        game = self.active_games[game_id]
+        game["status"] = "ended"
+        game["end_time"] = datetime.now()
+        
+        # Получить топ-5 игроков
+        sorted_players = sorted(game["taps"].items(), key=lambda x: x[1], reverse=True)
+        top_5 = sorted_players[:5]
+        
+        # Распределить призы (2000 звезд)
+        prizes = [800, 500, 350, 200, 150]  # Сумма = 2000
+        
+        for i, (user_id, taps) in enumerate(top_5):
+            prize = prizes[i] if i < len(prizes) else 0
+            await self.db.add_winnings(user_id, prize, game_id)
+            await self.db.update_user_balance(user_id, prize)
+        
+        await self.db.update_game_status(game_id, "ended")
+        
+        # Очистить активную игру
+        del self.active_games[game_id]
+        
+        # Создать новую игру
+        await self.create_new_game()
+    
+    async def apply_boost(self, game_id: int, user_id: int, boost_type: str) -> bool:
+        """Применить буст"""
+        # Простая реализация бустов
+        boosts = {
+            "double_tap": {"multiplier": 2.0, "duration": 10},
+            "triple_tap": {"multiplier": 3.0, "duration": 5},
+            "auto_tap": {"multiplier": 0.5, "duration": 30}
+        }
+        
+        if boost_type not in boosts:
+            return False
+            
+        # Проверить, есть ли у пользователя буст
+        has_boost = await self.db.check_user_boost(user_id, boost_type)
+        
+        if not has_boost:
+            return False
+            
+        # Активировать буст
+        await self.db.use_boost(user_id, boost_type)
+        
+        return True
     
     async def get_game_state(self, game_id: int) -> Dict:
         """Получить текущее состояние игры"""
         if game_id not in self.active_games:
-            return None
-        
+            return {}
+            
         game = self.active_games[game_id]
-        players = await self.db.get_game_players(game_id)
         
-        # Сортируем по тапам
+        # Сортировка лидерборда
         leaderboard = sorted(
-            [(p["user_id"], p["username"], p["taps"]) for p in players],
-            key=lambda x: x[2],
+            [{"user_id": uid, "taps": taps} for uid, taps in game["taps"].items()],
+            key=lambda x: x["taps"],
             reverse=True
-        )
+        )[:10]  # Топ-10
         
         return {
-            "game_id": game_id,
-            "started": game["started"],
-            "players_count": len(players),
-            "leaderboard": leaderboard[:10]  # Топ-10
+            "status": game["status"],
+            "players_count": len(game["players"]),
+            "leaderboard": leaderboard,
+            "time_left": 60 - (datetime.now() - game["start_time"]).seconds if game["start_time"] else 60
         }
