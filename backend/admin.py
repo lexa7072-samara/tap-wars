@@ -12,13 +12,6 @@ class WithdrawAction(BaseModel):
     request_id: int
     action: str  # "approve" or "reject"
 
-class WithdrawRequest(BaseModel):
-    request_id: int
-    user_id: int
-    amount: int
-    status: str
-    created_at: str
-
 def check_auth(password: str):
     return password == ADMIN_PASSWORD
 
@@ -192,3 +185,180 @@ async def get_users(password: str, limit: int = 50, offset: int = 0):
             "created_at": r[6]
         } for r in rows]
     }
+
+
+# ========== API СТАТИСТИКИ ЗВЕЗД ==========
+
+@router.get("/stars/transactions")
+async def get_star_transactions(password: str, limit: int = 50, offset: int = 0):
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .star_stats import StarStats
+    
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return {"success": False, "error": "BOT_TOKEN not configured"}
+    
+    star_stats = StarStats(BOT_TOKEN)
+    result = await star_stats.get_transactions(limit, offset)
+    return result
+
+@router.get("/stars/total")
+async def get_star_total(password: str):
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .star_stats import StarStats
+    
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return {"success": False, "error": "BOT_TOKEN not configured"}
+    
+    star_stats = StarStats(BOT_TOKEN)
+    total = await star_stats.get_total_earned()
+    withdrawable = await star_stats.get_withdrawable_balance()
+    
+    return {
+        "success": True,
+        "total_earned": total,
+        "withdrawable": withdrawable,
+        "pending": total - withdrawable
+    }
+
+@router.get("/stars/daily")
+async def get_star_daily(password: str, days: int = 7):
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .star_stats import StarStats
+    
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return {"success": False, "error": "BOT_TOKEN not configured"}
+    
+    star_stats = StarStats(BOT_TOKEN)
+    stats = await star_stats.get_daily_stats(days)
+    return {"success": True, "stats": stats}
+
+
+# ========== API БИЛЕТОВ ==========
+
+@router.get("/tickets/{user_id}")
+async def get_user_tickets(user_id: int, password: str):
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .database import Database
+    db = Database()
+    await db.init()
+    
+    cursor = db.connection.cursor()
+    cursor.execute('SELECT game_type, count FROM user_tickets WHERE user_id = ?', (user_id,))
+    rows = cursor.fetchall()
+    
+    return {"tickets": [{"game_type": r[0], "count": r[1]} for r in rows]}
+
+
+# ========== API ИГР ==========
+
+@router.get("/games")
+async def get_all_games(password: str, limit: int = 50, offset: int = 0):
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .database import Database
+    db = Database()
+    await db.init()
+    
+    cursor = db.connection.cursor()
+    cursor.execute('''
+        SELECT game_id, game_type, status, max_players, ticket_price, prize_pool, duration, created_at, start_time, end_time
+        FROM games
+        ORDER BY game_id DESC
+        LIMIT ? OFFSET ?
+    ''', (limit, offset))
+    rows = cursor.fetchall()
+    
+    return {
+        "games": [{
+            "game_id": r[0],
+            "game_type": r[1],
+            "status": r[2],
+            "max_players": r[3],
+            "ticket_price": r[4],
+            "prize_pool": r[5],
+            "duration": r[6],
+            "created_at": r[7],
+            "start_time": r[8],
+            "end_time": r[9]
+        } for r in rows]
+    }
+
+
+# ========== API ДЛЯ ОТПРАВКИ УВЕДОМЛЕНИЙ ==========
+
+@router.post("/send-notification")
+async def send_notification(request: Request):
+    data = await request.json()
+    password = data.get("password")
+    user_id = data.get("user_id")
+    message = data.get("message")
+    
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .main import bot
+    
+    if not bot:
+        return {"success": False, "error": "Bot not initialized"}
+    
+    try:
+        await bot.send_message(user_id, message)
+        return {"success": True, "message": "Уведомление отправлено"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ========== API ДЛЯ СБРОСА БАЛАНСА ==========
+
+@router.post("/reset-balance")
+async def reset_balance(request: Request):
+    data = await request.json()
+    password = data.get("password")
+    user_id = data.get("user_id")
+    
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .database import Database
+    db = Database()
+    await db.init()
+    
+    cursor = db.connection.cursor()
+    cursor.execute('UPDATE users SET balance = 0 WHERE user_id = ?', (user_id,))
+    db.connection.commit()
+    
+    return {"success": True, "message": f"Баланс пользователя {user_id} сброшен"}
+
+
+# ========== API ДЛЯ ВЫДАЧИ БИЛЕТОВ ==========
+
+@router.post("/add-ticket")
+async def admin_add_ticket(request: Request):
+    data = await request.json()
+    password = data.get("password")
+    user_id = data.get("user_id")
+    game_type = data.get("game_type")
+    count = data.get("count", 1)
+    
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .database import Database
+    db = Database()
+    await db.init()
+    
+    await db.add_ticket(user_id, game_type, count)
+    
+    return {"success": True, "message": f"Добавлено {count} билет(ов) типа {game_type} пользователю {user_id}"}
