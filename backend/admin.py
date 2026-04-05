@@ -362,3 +362,32 @@ async def admin_add_ticket(request: Request):
     await db.add_ticket(user_id, game_type, count)
     
     return {"success": True, "message": f"Добавлено {count} билет(ов) типа {game_type} пользователю {user_id}"}
+
+@router.post("/reset-database")
+async def reset_database(request: Request):
+    data = await request.json()
+    password = data.get("password")
+    
+    if not check_auth(password):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    from .database import Database
+    db = Database()
+    await db.init()
+    
+    cursor = db.connection.cursor()
+    
+    # Очищаем все таблицы
+    cursor.execute('DELETE FROM user_tickets')
+    cursor.execute('DELETE FROM withdraw_requests')
+    cursor.execute('DELETE FROM winnings')
+    cursor.execute('DELETE FROM game_players')
+    cursor.execute('DELETE FROM games')
+    cursor.execute('DELETE FROM users')
+    
+    # Сбрасываем автоинкремент
+    cursor.execute('DELETE FROM sqlite_sequence')
+    
+    db.connection.commit()
+    
+    return {"success": True, "message": "База данных полностью очищена"}
