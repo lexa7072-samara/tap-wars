@@ -681,37 +681,82 @@
         }
         
         buyTicketBtn.onclick = async () => {
-            buyTicketBtn.disabled = true;
-            buyTicketBtn.textContent = '⏳ Обработка...';
-            
-            try {
-                const response = await fetch('/api/payment/create-invoice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId, game_id: currentGameId, amount: selectedGameConfig.ticket_price })
-                });
-                const data = await response.json();
-                
-                if (data.success && data.invoice_link) {
-                    tg.openInvoice(data.invoice_link, async (status) => {
-                        if (status === 'paid') {
-                            tg.showAlert('✅ Билет куплен!');
-                            hasTicket = true;
-                            buyTicketBtn.style.display = 'none';
-                            tapArea.style.opacity = '1';
-                            tapArea.style.pointerEvents = 'auto';
-                            await joinGame();
-                        } else {
-                            buyTicketBtn.disabled = false;
-                            buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
-                        }
-                    });
+    buyTicketBtn.disabled = true;
+    buyTicketBtn.textContent = '⏳ Обработка...';
+    
+    try {
+        const response = await fetch('/api/payment/create-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                user_id: userId, 
+                game_id: currentGameId,
+                game_type: selectedGameType,
+                amount: selectedGameConfig.ticket_price 
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success && data.invoice_link) {
+            tg.openInvoice(data.invoice_link, async (status) => {
+                if (status === 'paid') {
+                    tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    await checkTicket();
+                    
+                    if (hasTicket) {
+                        buyTicketBtn.style.display = 'none';
+                        tapArea.style.opacity = '1';
+                        tapArea.style.pointerEvents = 'auto';
+                        await joinGame();
+                    } else {
+                        await joinGameDirectly();
+                    }
+                } else {
+                    buyTicketBtn.disabled = false;
+                    buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
                 }
-            } catch(e) {
-                buyTicketBtn.disabled = false;
-                buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+            });
+        } else {
+            buyTicketBtn.disabled = false;
+            buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+            tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось создать инвойс'));
+        }
+    } catch(e) {
+        console.error('Buy ticket error:', e);
+        buyTicketBtn.disabled = false;
+        buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+        tg.showAlert('❌ Ошибка соединения');
+    }
+};
+
+        async function joinGameDirectly() {
+    try {
+        const response = await fetch(`/api/game/${currentGameId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            hasTicket = true;
+            buyTicketBtn.style.display = 'none';
+            tapArea.style.opacity = '1';
+            tapArea.style.pointerEvents = 'auto';
+            tg.showAlert('✅ Присоединились к игре!');
+            
+            if (data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                startGame();
             }
-        };
+        } else {
+            tg.showAlert('❌ Не удалось присоединиться к игре');
+        }
+    } catch(e) {
+        console.error('Join direct error:', e);
+    }
+}
         
         async function joinGame() {
             try {
