@@ -38,45 +38,13 @@ def get_main_keyboard() -> ReplyKeyboardMarkup:
     )
     return keyboard
 
-def get_game_selector_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура выбора типа игры"""
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🟢 Мини (10⭐)",
-                    web_app=WebAppInfo(url=f"{WEBAPP_URL}?game=mini")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🔵 Стандарт (50⭐)",
-                    web_app=WebAppInfo(url=f"{WEBAPP_URL}?game=standard")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="🟣 VIP (100⭐)",
-                    web_app=WebAppInfo(url=f"{WEBAPP_URL}?game=vip")
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="⚔️ Дуэль (10⭐)",
-                    web_app=WebAppInfo(url=f"{WEBAPP_URL}?game=duel")
-                )
-            ]
-        ]
-    )
-    return keyboard
-
 def get_inline_menu() -> InlineKeyboardMarkup:
     """Инлайн клавиатура для сообщений"""
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🎮 Открыть игру",
+                    text="🎮 Запустить игру",
                     web_app=WebAppInfo(url=WEBAPP_URL)
                 )
             ],
@@ -100,7 +68,7 @@ async def start(message: types.Message):
     welcome_text = (
         f"⚡ Добро пожаловать в Tap Wars, {user_name}!\n\n"
         f"🎮 **Tap Wars** — это увлекательная игра, где нужно быстро тапать!\n\n"
-        f"**📊 Доступные режимы:**\n"
+        f"**📊 Доступные режимы в игре:**\n"
         f"🟢 Мини — 10⭐, 10 игроков, приз 60⭐\n"
         f"🔵 Стандарт — 50⭐, 20 игроков, приз 750⭐\n"
         f"🟣 VIP — 100⭐, 10 игроков, приз 750⭐\n"
@@ -116,15 +84,21 @@ async def start(message: types.Message):
 
 @dp.message(lambda message: message.text == "🎮 Играть")
 async def play_button(message: types.Message):
-    """Кнопка 'Играть'"""
+    """Кнопка 'Играть' — сразу открывает Mini App"""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🎮 Запустить Tap Wars",
+                    web_app=WebAppInfo(url=WEBAPP_URL)
+                )
+            ]
+        ]
+    )
+    
     await message.answer(
-        "🎮 **Выбери режим игры:**\n\n"
-        "🟢 **Мини** — 10⭐, 10 игроков, 60⭐ призовой фонд\n"
-        "🔵 **Стандарт** — 50⭐, 20 игроков, 750⭐ призовой фонд\n"
-        "🟣 **VIP** — 100⭐, 10 игроков, 750⭐ призовой фонд\n"
-        "⚔️ **Дуэль** — 10⭐, 2 игрока, победитель забирает 15⭐",
-        reply_markup=get_game_selector_keyboard(),
-        parse_mode="Markdown"
+        "🎮 Нажми на кнопку ниже, чтобы запустить игру!",
+        reply_markup=keyboard
     )
 
 @dp.message(lambda message: message.text == "🏆 Топ игроков")
@@ -201,14 +175,14 @@ async def help_button(message: types.Message):
     help_text = (
         "❓ **Помощь по игре Tap Wars**\n\n"
         "**🎮 Как играть?**\n"
-        "1. Выбери режим игры\n"
+        "1. Нажми 'Играть'\n"
         "2. Купи билет за Stars или TON\n"
         "3. Жди набора игроков\n"
         "4. Тапай как можно быстрее 30-60 секунд\n"
         "5. Попади в топ и получи приз!\n\n"
         "**💎 Способы оплаты:**\n"
-        "• ⭐ **Telegram Stars**\n"
-        "• 💎 **TON** — криптовалюта, комиссия 0%\n\n"
+        "• ⭐ **Telegram Stars** — покупка через App Store/Google Play\n"
+        "• 💎 **TON** — криптовалюта, комиссия 0%, нужен TON кошелёк\n\n"
         "**⚔️ Режимы игры:**\n"
         "• 🟢 Мини — 10⭐, 10 игроков, топ-3 получают призы\n"
         "• 🔵 Стандарт — 50⭐, 20 игроков, топ-5 получают призы\n"
