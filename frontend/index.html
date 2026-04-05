@@ -612,31 +612,51 @@
         }
         
         function displayGames(types) {
-            gamesList.innerHTML = '';
-            const order = ['mini', 'standard', 'vip'];
-            for (const key of order) {
-                if (!types[key]) continue;
-                const config = types[key];
-                const card = document.createElement('div');
-                card.className = `game-card ${key}`;
-                card.innerHTML = `
-                    <div class="game-header">
-                        <span class="game-title">${config.emoji} ${config.name}</span>
-                        <span class="game-price">${config.ticket_price} ⭐</span>
-                    </div>
-                    <div class="game-stats">
-                        <div class="stat-item"><div class="stat-value">${config.max_players}</div><div class="stat-label">игроков</div></div>
-                        <div class="stat-item"><div class="stat-value prize">${config.prize_pool} ⭐</div><div class="stat-label">приз</div></div>
-                        <div class="stat-item"><div class="stat-value">${config.duration} сек</div><div class="stat-label">длительность</div></div>
-                    </div>
-                    <div class="game-description">${config.description}</div>
-                    <button class="join-btn" data-type="${key}">Выбрать</button>
-                `;
-                card.querySelector('.join-btn').onclick = () => selectGame(key, config);
-                gamesList.appendChild(card);
-            }
+    gamesList.innerHTML = '';
+    const order = ['mini', 'standard', 'vip', 'duel'];
+    for (const key of order) {
+        if (!types[key]) continue;
+        const config = types[key];
+        const card = document.createElement('div');
+        card.className = `game-card ${key}`;
+        
+        let prizeText = '';
+        if (key === 'duel') {
+            prizeText = '🏆 Победитель: 15 ⭐';
+        } else if (key === 'mini') {
+            prizeText = '🏆 Топ-3: 35/15/10 ⭐';
+        } else {
+            prizeText = `🏆 Призовой фонд: ${config.prize_pool} ⭐`;
         }
         
+        card.innerHTML = `
+            <div class="game-header">
+                <span class="game-title">${config.emoji} ${config.name}</span>
+                <span class="game-price">${config.ticket_price} ⭐</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <div class="stat-value">${config.max_players}</div>
+                    <div class="stat-label">игроков</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value prize">${config.prize_pool} ⭐</div>
+                    <div class="stat-label">призовой фонд</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${config.duration} сек</div>
+                    <div class="stat-label">длительность</div>
+                </div>
+            </div>
+            <div class="game-description">${config.description}</div>
+            <div style="font-size: 12px; color: #00b894; text-align: center; margin-top: 5px;">${prizeText}</div>
+            <button class="join-btn" data-type="${key}">Выбрать</button>
+        `;
+        
+        card.querySelector('.join-btn').onclick = () => selectGame(key, config);
+        gamesList.appendChild(card);
+    }
+}        
         async function selectGame(type, config) {
             selectedGameType = type;
             selectedGameConfig = config;
