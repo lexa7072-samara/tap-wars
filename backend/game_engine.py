@@ -57,6 +57,10 @@ class GameEngine:
         await self.db.use_ticket(user_id, game["game_type"])
         await self.db.add_player_to_game(game_id, user_id)
         
+        # Для дуэли: если 2 игрока, сразу запускаем игру
+        if game["game_type"] == "duel" and len(game["players"]) >= 2:
+            await self.start_game(game_id)
+        
         return True
     
     async def add_tap(self, game_id: int, user_id: int, multiplier: float = 1.0) -> int:
