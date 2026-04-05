@@ -158,12 +158,21 @@ async def join_game(game_id: int, user_id: int):
     if success:
         players_count = await db.get_game_players_count(game_id)
         
+        # Получаем информацию об игре
+        game = await db.get_active_game()
+        game_type = game.get("game_type", "standard") if game else "standard"
+        max_players = game.get("max_players", 50) if game else 50
+        
         await broadcast_to_game(game_id, {
             "type": "player_joined",
             "players_count": players_count
         })
         
-        if await game_engine.check_game_start(game_id):
+        # Для дуэли игра начинается сразу при 2 игроках
+        if game_type == "duel" and players_count >= 2:
+            await game_engine.start_game(game_id)
+            await broadcast_to_game(game_id, {"type": "game_started"})
+        elif await game_engine.check_game_start(game_id):
             await broadcast_to_game(game_id, {
                 "type": "game_starting",
                 "countdown": 3
@@ -171,10 +180,14 @@ async def join_game(game_id: int, user_id: int):
             await asyncio.sleep(3)
             await broadcast_to_game(game_id, {"type": "game_started"})
         
-        return {"success": True, "players_count": players_count}
+        return {
+            "success": True, 
+            "players_count": players_count,
+            "max_players": max_players,
+            "game_type": game_type
+        }
     
     return {"success": False, "error": "Already in game or no ticket"}
-
 # ========== API ОБНОВЛЕНИЯ СЧЁТА ==========
 
 @app.post("/api/update-score")
