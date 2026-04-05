@@ -569,8 +569,7 @@
         return;
     }
     
-    // Получаем актуальный курс (примерный)
-    const priceInTon = (selectedGameConfig.ticket_price / 700).toFixed(5); // 1000⭐ ≈ 1 TON
+    const priceInTon = (selectedGameConfig.ticket_price / 700).toFixed(5);
     
     tg.showPopup({
         title: 'Подтверждение оплаты',
@@ -589,7 +588,7 @@
                     validUntil: Math.floor(Date.now() / 1000) + 600,
                     messages: [
                         {
-                            address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO", // Замените на ваш TON адрес
+                            address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO",
                             amount: (parseFloat(priceInTon) * 1000000000).toString(),
                         }
                     ]
@@ -598,7 +597,6 @@
                 const result = await tonConnectUI.sendTransaction(transaction);
                 console.log('Transaction sent:', result);
                 
-                // Отправляем подтверждение на бэкенд
                 const response = await fetch('/api/payment/ton/confirm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -609,6 +607,43 @@
                         tx_hash: result.boc
                     })
                 });
+                
+                const data = await response.json();
+                console.log('Confirm response:', data);
+                
+                if (data.success) {
+                    tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                    hasTicket = true;
+                    buyTicketBtn.style.display = 'none';
+                    buyTonBtn.style.display = 'none';
+                    tapArea.style.opacity = '1';
+                    tapArea.style.pointerEvents = 'auto';
+                    
+                    // Обновляем game_id если он изменился
+                    if (data.game_id) {
+                        currentGameId = data.game_id;
+                    }
+                    
+                    // Обновляем количество игроков
+                    if (data.players_count) {
+                        playersCountSpan.textContent = data.players_count;
+                    }
+                    
+                    await joinGame();
+                } else {
+                    tg.showAlert('❌ Ошибка: ' + (data.error || 'Попробуйте ещё раз'));
+                    buyTonBtn.disabled = false;
+                    buyTonBtn.textContent = `💎 Купить за TON`;
+                }
+            } catch(e) {
+                console.error('TON payment error:', e);
+                tg.showAlert('❌ Ошибка при оплате: ' + e.message);
+                buyTonBtn.disabled = false;
+                buyTonBtn.textContent = `💎 Купить за TON`;
+            }
+        }
+    });
+}
                 
                 const data = await response.json();
                 console.log('Confirm response:', data);
