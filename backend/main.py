@@ -280,6 +280,29 @@ async def create_invoice(request: Request):
         print(f"Error creating invoice: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/payment/ton/confirm")
+async def confirm_ton_payment(request: Request):
+    """Подтверждение оплаты через TON"""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        game_id = data.get("game_id")
+        game_type = data.get("game_type")
+        tx_hash = data.get("tx_hash")
+        
+        from .payment_ton import TONPayment
+        ton_payment = TONPayment(BOT_TOKEN)
+        
+        success = await ton_payment.add_ticket_on_ton_payment(user_id, game_id, game_type, tx_hash)
+        
+        if success:
+            return {"success": True, "message": "Билет активирован"}
+        else:
+            return {"success": False, "error": "Не удалось активировать билет"}
+    except Exception as e:
+        print(f"TON payment error: {e}")
+        return {"success": False, "error": str(e)}
+
 # ========== ВЕБХУК ДЛЯ TELEGRAM ==========
 
 @app.post("/webhook")
