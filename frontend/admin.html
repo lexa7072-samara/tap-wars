@@ -81,10 +81,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
         
         .header h1 {
             color: #1a1a2e;
+            font-size: 24px;
         }
         
         .logout-btn {
@@ -133,6 +136,19 @@
         .section h2 {
             margin-bottom: 15px;
             color: #1a1a2e;
+            font-size: 20px;
+        }
+        
+        .section h3 {
+            margin-bottom: 10px;
+            color: #1a1a2e;
+            font-size: 18px;
+        }
+        
+        .section h4 {
+            margin-bottom: 10px;
+            color: #1a1a2e;
+            font-size: 16px;
         }
         
         table {
@@ -189,6 +205,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .tab {
@@ -196,6 +213,7 @@
             background: #e9ecef;
             border-radius: 10px;
             cursor: pointer;
+            transition: all 0.2s;
         }
         
         .tab.active {
@@ -226,6 +244,33 @@
             cursor: pointer;
         }
         
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .info-box {
+            background: #e8f4f8;
+            border-left: 4px solid #00b894;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .info-box ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .info-box a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .info-box a:hover {
+            text-decoration: underline;
+        }
+        
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -234,11 +279,19 @@
                 font-size: 12px;
                 padding: 8px;
             }
+            .tab {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Login Screen -->
         <div id="login-screen" class="login-screen">
             <div class="login-card">
                 <h1>🔐 Вход в админку</h1>
@@ -247,12 +300,14 @@
             </div>
         </div>
         
+        <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel">
             <div class="header">
                 <h1>⚡ Tap Wars - Админ панель</h1>
                 <button class="logout-btn" onclick="logout()">🚪 Выйти</button>
             </div>
             
+            <!-- Stats -->
             <div class="stats-grid" id="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value" id="total-users">0</div>
@@ -272,12 +327,15 @@
                 </div>
             </div>
             
+            <!-- Tabs -->
             <div class="tabs">
                 <div class="tab active" data-tab="withdraw">💸 Запросы на вывод</div>
                 <div class="tab" data-tab="users">👥 Пользователи</div>
                 <div class="tab" data-tab="winners">🏆 Топ выигрышей</div>
+                <div class="tab" data-tab="stars">⭐ Доход от Stars</div>
             </div>
             
+            <!-- Withdraw Requests Tab -->
             <div id="tab-withdraw" class="tab-content active">
                 <div class="section">
                     <h2>💸 Активные запросы на вывод</h2>
@@ -292,6 +350,7 @@
                 </div>
             </div>
             
+            <!-- Users Tab -->
             <div id="tab-users" class="tab-content">
                 <div class="section">
                     <h2>👥 Список пользователей</h2>
@@ -300,10 +359,54 @@
                 </div>
             </div>
             
+            <!-- Winners Tab -->
             <div id="tab-winners" class="tab-content">
                 <div class="section">
                     <h2>🏆 Топ выигрышей</h2>
                     <div id="winners-list"></div>
+                </div>
+            </div>
+            
+            <!-- Stars Revenue Tab -->
+            <div id="tab-stars" class="tab-content">
+                <div class="section">
+                    <h2>⭐ Доход от Telegram Stars</h2>
+                    
+                    <div class="stats-grid" style="margin-bottom: 20px;">
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-earned">0 ⭐</div>
+                            <div class="stat-label">Всего заработано</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="withdrawable">0 ⭐</div>
+                            <div class="stat-label">Доступно к выводу</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="pending-stars">0 ⭐</div>
+                            <div class="stat-label">В обработке (ждёт 21 день)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h3>📊 Статистика по дням</h3>
+                        <div id="daily-stats"></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h3>📋 Последние транзакции</h3>
+                        <div id="transactions-list"></div>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h4>ℹ️ Как вывести звезды:</h4>
+                        <ol>
+                            <li>Накопите минимум <strong>1000 ⭐</strong></li>
+                            <li>Звезды становятся доступны через <strong>21 день</strong> после получения</li>
+                            <li>Перейдите на <a href="https://fragment.com" target="_blank">fragment.com</a></li>
+                            <li>Войдите через Telegram и выберите "Stars"</li>
+                            <li>Выведите звезды в TON, затем обменяйте на рубли на бирже</li>
+                        </ol>
+                    </div>
                 </div>
             </div>
         </div>
@@ -393,7 +496,10 @@
                         actionCell.appendChild(rejectBtn);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Нет активных запросов</td></tr>';
+                    const row = tbody.insertRow();
+                    row.insertCell(0).colSpan = 5;
+                    row.insertCell(0).textContent = 'Нет активных запросов';
+                    row.insertCell(0).style.textAlign = 'center';
                 }
             } catch(e) {
                 console.error('Error loading requests:', e);
@@ -438,9 +544,9 @@
                 
                 const usersList = document.getElementById('users-list');
                 
-                let html = '<table style="width:100%"><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Тапов</th><th>Игр</th><th>Регистрация</th></tr></thead><tbody>';
-                
                 if (data.users && data.users.length > 0) {
+                    let html = '<table style="width:100%"><thead><tr><th>ID</th><th>Имя</th><th>Баланс</th><th>Тапов</th><th>Игр</th><th>Регистрация</th></tr></thead><tbody>';
+                    
                     data.users.forEach(user => {
                         html += `<tr>
                             <td>${user.user_id}</td>
@@ -451,12 +557,12 @@
                             <td>${new Date(user.created_at).toLocaleDateString()}</td>
                         </tr>`;
                     });
+                    
+                    html += '</tbody></table>';
+                    usersList.innerHTML = html;
                 } else {
-                    html += '<tr><td colspan="6" style="text-align:center;">Нет пользователей</td></tr>';
+                    usersList.innerHTML = '<p style="text-align:center;">Нет пользователей</p>';
                 }
-                
-                html += '</tbody></table>';
-                usersList.innerHTML = html;
                 
                 const pagination = document.getElementById('users-pagination');
                 pagination.innerHTML = `
@@ -469,6 +575,7 @@
             }
         }
         
+        // Tabs functionality
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -479,6 +586,7 @@
                 document.getElementById(`tab-${tabId}`).classList.add('active');
                 
                 if (tabId === 'winners') loadWinners();
+                if (tabId === 'stars') loadStarStats();
             });
         });
         
@@ -508,6 +616,96 @@
             } catch(e) {
                 console.error('Error loading winners:', e);
             }
+        }
+        
+        // Stars revenue functions
+        async function loadStarStats() {
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const totalResponse = await fetch(`/admin/stars/total?password=${encodeURIComponent(password)}`);
+                const totalData = await totalResponse.json();
+                
+                if (totalData.success) {
+                    document.getElementById('total-earned').textContent = totalData.total_earned + ' ⭐';
+                    document.getElementById('withdrawable').textContent = totalData.withdrawable + ' ⭐';
+                    document.getElementById('pending-stars').textContent = totalData.pending + ' ⭐';
+                }
+                
+                const dailyResponse = await fetch(`/admin/stars/daily?password=${encodeURIComponent(password)}&days=7`);
+                const dailyData = await dailyResponse.json();
+                
+                if (dailyData.success) {
+                    displayDailyStats(dailyData.stats);
+                }
+                
+                const txResponse = await fetch(`/admin/stars/transactions?password=${encodeURIComponent(password)}&limit=20`);
+                const txData = await txResponse.json();
+                
+                if (txData.success && txData.transactions) {
+                    displayTransactions(txData.transactions);
+                }
+                
+            } catch(e) {
+                console.error('Error loading star stats:', e);
+                const container = document.getElementById('daily-stats');
+                container.innerHTML = '<p style="color: #ff6b6b;">Ошибка загрузки статистики. Убедитесь, что BOT_TOKEN настроен.</p>';
+            }
+        }
+        
+        function displayDailyStats(stats) {
+            const container = document.getElementById('daily-stats');
+            
+            if (!stats || Object.keys(stats).length === 0) {
+                container.innerHTML = '<p style="text-align:center;">Нет данных</p>';
+                return;
+            }
+            
+            let html = '<table style="width:100%"><thead><tr><th>Дата</th><th>Доход</th><th>Расход</th><th>Транзакций</th></tr></thead><tbody>';
+            
+            const sortedDates = Object.keys(stats).sort().reverse();
+            
+            for (const date of sortedDates) {
+                const day = stats[date];
+                html += `<tr>
+                    <td>${date}</td>
+                    <td style="color: #00b894;">+${day.income} ⭐</td>
+                    <td style="color: #ff6b6b;">-${day.spent} ⭐</td>
+                    <td>${day.count}</td>
+                </tr>`;
+            }
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function displayTransactions(transactions) {
+            const container = document.getElementById('transactions-list');
+            
+            if (!transactions || transactions.length === 0) {
+                container.innerHTML = '<p style="text-align:center;">Нет транзакций</p>';
+                return;
+            }
+            
+            let html = '<table style="width:100%"><thead><tr><th>Дата</th><th>Тип</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>';
+            
+            for (const tx of transactions) {
+                const date = new Date(tx.date * 1000).toLocaleString();
+                const amount = tx.amount;
+                const type = amount > 0 ? '💰 Доход' : '💸 Расход';
+                const amountClass = amount > 0 ? '#00b894' : '#ff6b6b';
+                const status = tx.status === 'successful' ? '✅ Успешно' : '⏳ Ожидание';
+                
+                html += `<tr>
+                    <td>${date}</td>
+                    <td>${type}</td>
+                    <td style="color: ${amountClass}">${amount > 0 ? '+' : ''}${amount} ⭐</td>
+                    <td>${status}</td>
+                </tr>`;
+            }
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
     </script>
 </body>
