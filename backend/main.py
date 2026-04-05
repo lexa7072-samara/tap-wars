@@ -88,11 +88,10 @@ async def root():
 @app.get("/admin")
 @app.get("/admin.html")
 async def admin_panel():
-    """Админ панель"""
     admin_path = BASE_DIR / "frontend" / "admin.html"
     if admin_path.exists():
         return FileResponse(admin_path)
-    return {"error": "Admin page not found. Please create frontend/admin.html"}
+    return {"error": "Admin page not found"}
 
 @app.get("/health")
 async def health():
@@ -248,6 +247,7 @@ async def create_invoice(request: Request):
         data = await request.json()
         user_id = data.get("user_id")
         game_id = data.get("game_id")
+        game_type = data.get("game_type", "standard")
         amount = data.get("amount", 50)
         
         if not bot:
@@ -255,17 +255,12 @@ async def create_invoice(request: Request):
         
         invoice_link = await bot.create_invoice_link(
             title="🎮 Билет на Tap Wars",
-            description=f"Участие в битве на игроков. Топ-делят призовой фонд",
-            payload=f"game_ticket_{game_id}_{user_id}",
+            description=f"Билет на игру {game_type}",
+            payload=f"ticket_{game_type}_{game_id}_{user_id}",
             provider_token="",
             currency="XTR",
             prices=[LabeledPrice(label="Билет на игру", amount=amount)]
         )
-        
-        # Добавляем билет пользователю после оплаты
-        game = await db.get_active_game()
-        if game:
-            await db.add_ticket(user_id, game.get("game_type", "standard"), 1)
         
         return {"success": True, "invoice_link": invoice_link}
     except Exception as e:
@@ -290,12 +285,19 @@ async def telegram_webhook(request: Request):
             payload = payment["invoice_payload"]
             
             parts = payload.split("_")
-            if len(parts) >= 4:
+            if len(parts) >= 4 and parts[0] == "ticket":
+                game_type = parts[1]
                 game_id = int(parts[2])
                 user_id = int(parts[3])
                 
-                await game_engine.join_game(game_id, user_id)
-                print(f"✅ User {user_id} joined game {game_id} after payment")
+                await db.add_ticket(user_id, game_type, 1)
+                print(f"✅ User {user_id} bought ticket for {game_type} game")
+                
+                success = await game_engine.join_game(game_id, user_id)
+                if success:
+                    print(f"✅ User {user_id} joined game {game_id}")
+                else:
+                    print(f"❌ User {user_id} could not join game {game_id}")
         
         return {"ok": True}
     except Exception as e:
