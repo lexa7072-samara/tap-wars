@@ -569,7 +569,7 @@
                 return;
             }
             
-            const priceInTon = selectedGameConfig.ticket_price / 1000; // 1000⭐ = 1 TON (примерный курс)
+            const priceInTon = selectedGameConfig.ticket_price / 1000; // 1000⭐ = 15 TON (примерный курс)
             
             tg.showPopup({
                 title: 'Подтверждение оплаты',
@@ -796,7 +796,7 @@
         } else if (key === 'standard') {
             prizeDescription = '🏆 Топ-5:\n🥇 300 ⭐ | 🥈 200 ⭐ | 🥉 120 ⭐ | 4️⃣ 80 ⭐ | 5️⃣ 50 ⭐';
         } else if (key === 'vip') {
-            prizeDescription = '🏆 Топ-5:\n🥇 400 ⭐ | 🥈 250 ⭐ | 🥉 100 ⭐ | 4️⃣ 0 ⭐ | 5️⃣ 0 ⭐';
+            prizeDescription = '🏆 Топ-3:\n🥇 400 ⭐ | 🥈 250 ⭐ | 🥉 100 ⭐';
         }
         
         card.innerHTML = `
