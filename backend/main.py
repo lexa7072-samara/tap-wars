@@ -97,6 +97,14 @@ async def admin_panel():
 async def health():
     return {"status": "ok"}
 
+@app.get("/tonconnect-manifest.json")
+async def ton_manifest():
+    """TON Connect манифест"""
+    manifest_path = BASE_DIR / "frontend" / "tonconnect-manifest.json"
+    if manifest_path.exists():
+        return FileResponse(manifest_path, media_type="application/json")
+    return {"url": "https://tap-wars.onrender.com", "name": "Tap Wars"}
+
 # ========== API АВТОРИЗАЦИИ ==========
 
 @app.post("/api/auth")
