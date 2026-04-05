@@ -563,70 +563,78 @@
         
         // Покупка билета за TON
         async function buyTicketWithTon() {
-            if (!tonWalletAddress) {
-                tg.showAlert('⚠️ Сначала подключите TON кошелёк');
-                await connectTonWallet();
-                return;
-            }
+    if (!tonWalletAddress) {
+        tg.showAlert('⚠️ Сначала подключите TON кошелёк');
+        await connectTonWallet();
+        return;
+    }
+    
+    // Получаем актуальный курс (примерный)
+    const priceInTon = (selectedGameConfig.ticket_price / 700).toFixed(5); // 1000⭐ ≈ 1 TON
+    
+    tg.showPopup({
+        title: 'Подтверждение оплаты',
+        message: `Купить билет на игру "${selectedGameConfig.name}" за ${priceInTon} TON?`,
+        buttons: [
+            {id: 'confirm', type: 'default', text: '✅ Оплатить'},
+            {id: 'cancel', type: 'cancel', text: 'Отмена'}
+        ]
+    }, async (buttonId) => {
+        if (buttonId === 'confirm') {
+            buyTonBtn.disabled = true;
+            buyTonBtn.textContent = '⏳ Оплата...';
             
-            const priceInTon = selectedGameConfig.ticket_price / 1000; // 1000⭐ = 15 TON (примерный курс)
-            
-            tg.showPopup({
-                title: 'Подтверждение оплаты',
-                message: `Купить билет на игру "${selectedGameConfig.name}" за ${priceInTon} TON?`,
-                buttons: [
-                    {id: 'confirm', type: 'default', text: '✅ Оплатить'},
-                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
-                ]
-            }, async (buttonId) => {
-                if (buttonId === 'confirm') {
-                    try {
-                        // Создаём транзакцию [citation:2][citation:6]
-                        const transaction = {
-                            validUntil: Math.floor(Date.now() / 1000) + 600, // 10 минут
-                            messages: [
-                                {
-                                    address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO", // Замените на ваш TON адрес
-                                    amount: (priceInTon * 1000000000).toString(), // в нанотонах
-                                }
-                            ]
-                        };
-                        
-                        const result = await tonConnectUI.sendTransaction(transaction);
-                        console.log('Transaction sent:', result);
-                        
-                        // Отправляем подтверждение на бэкенд
-                        const response = await fetch('/api/payment/ton/confirm', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                user_id: userId,
-                                game_id: currentGameId,
-                                game_type: selectedGameType,
-                                tx_hash: result
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
-                            hasTicket = true;
-                            buyTicketBtn.style.display = 'none';
-                            buyTonBtn.style.display = 'none';
-                            tapArea.style.opacity = '1';
-                            tapArea.style.pointerEvents = 'auto';
-                            await joinGame();
-                        } else {
-                            tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось подтвердить оплату'));
+            try {
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                    messages: [
+                        {
+                            address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO", // Замените на ваш TON адрес
+                            amount: (parseFloat(priceInTon) * 1000000000).toString(),
                         }
-                    } catch(e) {
-                        console.error('TON payment error:', e);
-                        tg.showAlert('❌ Ошибка при оплате TON');
-                    }
+                    ]
+                };
+                
+                const result = await tonConnectUI.sendTransaction(transaction);
+                console.log('Transaction sent:', result);
+                
+                // Отправляем подтверждение на бэкенд
+                const response = await fetch('/api/payment/ton/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        game_id: currentGameId,
+                        game_type: selectedGameType,
+                        tx_hash: result.boc
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Confirm response:', data);
+                
+                if (data.success) {
+                    tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                    hasTicket = true;
+                    buyTicketBtn.style.display = 'none';
+                    buyTonBtn.style.display = 'none';
+                    tapArea.style.opacity = '1';
+                    tapArea.style.pointerEvents = 'auto';
+                    await joinGame();
+                } else {
+                    tg.showAlert('❌ Ошибка активации: ' + (data.error || 'Попробуйте ещё раз'));
+                    buyTonBtn.disabled = false;
+                    buyTonBtn.textContent = `💎 Купить за TON`;
                 }
-            });
+            } catch(e) {
+                console.error('TON payment error:', e);
+                tg.showAlert('❌ Ошибка при оплате: ' + e.message);
+                buyTonBtn.disabled = false;
+                buyTonBtn.textContent = `💎 Купить за TON`;
+            }
         }
+    });
+}
         
         // Звуковые эффекты (как в предыдущей версии)
         let soundEnabled = true;
