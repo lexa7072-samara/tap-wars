@@ -624,6 +624,8 @@
                         currentGameId = data.game_id;
                     }
                     
+                    await forceRefreshGame();
+                    
                     // Обновляем количество игроков
                     if (data.players_count) {
                         playersCountSpan.textContent = data.players_count;
