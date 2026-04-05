@@ -317,16 +317,18 @@ async def confirm_ton_payment(request: Request):
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
+        print(f"📨 Webhook received: {data}")
         
         if "pre_checkout_query" in data:
             query_id = data["pre_checkout_query"]["id"]
             if bot:
                 await bot.answer_pre_checkout_query(query_id, ok=True)
+                print(f"✅ Pre-checkout answered for {query_id}")
             return {"ok": True}
         
         if "message" in data and "successful_payment" in data["message"]:
             payment = data["message"]["successful_payment"]
-            payload = payment["invoice_payload"]
+            print(f"💰 Payment received: {payment}")
             
             parts = payload.split("_")
             if len(parts) >= 4 and parts[0] == "ticket":
@@ -345,7 +347,7 @@ async def telegram_webhook(request: Request):
         
         return {"ok": True}
     except Exception as e:
-        print(f"Webhook error: {e}")
+        print(f"❌ Webhook error: {e}")
         return {"ok": False}
 
 # ========== WEBSOCKET ==========
