@@ -298,17 +298,23 @@ async def confirm_ton_payment(request: Request):
         game_type = data.get("game_type")
         tx_hash = data.get("tx_hash")
         
-        from .payment_ton import TONPayment
-        ton_payment = TONPayment(BOT_TOKEN)
+        print(f"💰 TON payment confirmation: user={user_id}, game={game_id}, type={game_type}, tx={tx_hash}")
         
-        success = await ton_payment.add_ticket_on_ton_payment(user_id, game_id, game_type, tx_hash)
+        # Добавляем билет пользователю
+        await db.add_ticket(user_id, game_type, 1)
+        print(f"✅ Ticket added for user {user_id}")
+        
+        # Присоединяем к игре
+        success = await game_engine.join_game(game_id, user_id)
+        print(f"✅ Join game result: {success}")
         
         if success:
             return {"success": True, "message": "Билет активирован"}
         else:
-            return {"success": False, "error": "Не удалось активировать билет"}
+            return {"success": False, "error": "Не удалось присоединиться к игре"}
+            
     except Exception as e:
-        print(f"TON payment error: {e}")
+        print(f"❌ TON payment error: {e}")
         return {"success": False, "error": str(e)}
 
 # ========== ВЕБХУК ДЛЯ TELEGRAM ==========
