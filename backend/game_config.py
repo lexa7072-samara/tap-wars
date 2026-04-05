@@ -1,3 +1,4 @@
+# Конфигурация типов игр
 GAME_TYPES = {
     "mini": {
         "name": "Мини",
@@ -28,5 +29,15 @@ GAME_TYPES = {
         "duration": 60,
         "prize_distribution": [400, 250, 100],
         "description": "Элитная игра с большими призами"
+    },
+    "duel": {
+        "name": "Дуэль",
+        "emoji": "⚔️",
+        "ticket_price": 10,
+        "max_players": 2,
+        "prize_pool": 15,
+        "duration": 30,
+        "prize_distribution": [15],  # Победитель получает всё
+        "description": "Битва один на один. Победитель забирает 15⭐"
     }
 }
