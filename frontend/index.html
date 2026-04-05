@@ -871,4 +871,269 @@
                     tg.openInvoice(data.invoice_link, async (status) => {
                         if (status === 'paid') {
                             tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
-                            await new Promise(resolve => setTimeout(resolve, 200
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            await checkTicket();
+                            if (hasTicket) {
+                                buyTicketBtn.style.display = 'none';
+                                buyTonBtn.style.display = 'none';
+                                tapArea.style.opacity = '1';
+                                tapArea.style.pointerEvents = 'auto';
+                                await joinGame();
+                            } else {
+                                await joinGameDirectly();
+                            }
+                        } else {
+                            buyTicketBtn.disabled = false;
+                            buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                        }
+                    });
+                } else {
+                    buyTicketBtn.disabled = false;
+                    buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                    tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось создать инвойс'));
+                }
+            } catch(e) {
+                console.error('Buy ticket error:', e);
+                buyTicketBtn.disabled = false;
+                buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                tg.showAlert('❌ Ошибка соединения');
+            }
+        };
+        
+        buyTonBtn.onclick = buyTicketWithTon;
+        
+        async function joinGameDirectly() {
+            try {
+                const response = await fetch(`/api/game/${currentGameId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    hasTicket = true;
+                    buyTicketBtn.style.display = 'none';
+                    buyTonBtn.style.display = 'none';
+                    tapArea.style.opacity = '1';
+                    tapArea.style.pointerEvents = 'auto';
+                    tg.showAlert('✅ Присоединились к игре!');
+                    
+                    if (data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                        startGame();
+                    }
+                } else {
+                    tg.showAlert('❌ Не удалось присоединиться к игре');
+                }
+            } catch(e) {
+                console.error('Join direct error:', e);
+            }
+        }
+        
+        async function joinGame() {
+            try {
+                const response = await fetch(`/api/game/${currentGameId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await response.json();
+                if (data.success && data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                    startGame();
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        function startGame() {
+            gameActive = true;
+            gameStarted = true;
+            gameStatusSpan.className = 'game-status playing';
+            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
+            playGameStartSound();
+            startTimer();
+        }
+        
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    timerSpan.textContent = `⏱️ ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`;
+                }
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+        }
+        
+        async function endGame() {
+            gameActive = false;
+            if (timerInterval) clearInterval(timerInterval);
+            tapArea.style.pointerEvents = 'none';
+            tapArea.style.opacity = '0.5';
+            gameStatusSpan.className = 'game-status ended';
+            gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
+            playGameEndSound();
+            
+            try {
+                await fetch('/api/update-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
+                });
+            } catch(e) {}
+            
+            tg.showAlert(`Игра окончена!\nВаш результат: ${score} тапов!`);
+            await loadBalance();
+        }
+        
+        async function getCurrentGame() {
+            try {
+                const response = await fetch('/api/game/current');
+                const data = await response.json();
+                playersCountSpan.textContent = data.players_count || 0;
+                return data;
+            } catch(e) { console.error(e); }
+        }
+        
+        let updateGameInfoInterval = null;
+        async function updateGameInfo() {
+            const game = await getCurrentGame();
+            if (game && game.players_count >= selectedGameConfig.max_players && !gameStarted) startGame();
+        }
+        
+        async function getLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+                if (data.leaders) {
+                    leaderboardDiv.innerHTML = '';
+                    data.leaders.slice(0, 10).forEach((player, idx) => {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+                        if (idx === 0) item.classList.add('top-1');
+                        else if (idx === 1) item.classList.add('top-2');
+                        else if (idx === 2) item.classList.add('top-3');
+                        let medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : '';
+                        item.innerHTML = `<span>${medal}${idx+1}. ${player.full_name || player.username}</span><span>${player.score || 0} 👆</span>`;
+                        leaderboardDiv.appendChild(item);
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        // Вывод средств
+        async function loadWithdrawHistory() {
+            try {
+                const response = await fetch(`/api/withdraw/history/${userId}`);
+                const data = await response.json();
+                const historyList = document.getElementById('withdraw-history-list');
+                if (data.history && data.history.length > 0) {
+                    historyList.innerHTML = '';
+                    data.history.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'withdraw-history-item';
+                        let statusClass = '', statusText = '';
+                        if (item.status === 'pending') { statusClass = 'withdraw-status-pending'; statusText = '⏳ Обрабатывается'; }
+                        else if (item.status === 'completed') { statusClass = 'withdraw-status-completed'; statusText = '✅ Выполнен'; }
+                        else { statusClass = 'withdraw-status-cancelled'; statusText = '❌ Отменён'; }
+                        div.innerHTML = `<span>${item.amount} ⭐</span><span class="${statusClass}">${statusText}</span><span style="font-size:12px;">${new Date(item.created_at).toLocaleDateString()}</span>`;
+                        historyList.appendChild(div);
+                    });
+                } else {
+                    historyList.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">Нет запросов</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function requestWithdraw() {
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            if (!amount || amount < 100) {
+                tg.showAlert('❌ Минимальная сумма вывода: 100 ⭐');
+                return;
+            }
+            if (amount > currentBalance) {
+                tg.showAlert('❌ Недостаточно звезд');
+                return;
+            }
+            
+            tg.showPopup({
+                title: 'Подтверждение',
+                message: `Вывести ${amount} ⭐?`,
+                buttons: [{id:'confirm',type:'default',text:'✅ Да'},{id:'cancel',type:'cancel',text:'Отмена'}]
+            }, async (buttonId) => {
+                if (buttonId === 'confirm') {
+                    try {
+                        const response = await fetch('/api/withdraw/request', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: userId, amount: amount })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            tg.showAlert(data.message);
+                            await loadBalance();
+                            await loadWithdrawHistory();
+                            document.getElementById('withdraw-amount').value = '';
+                            closeWithdrawModal();
+                        } else {
+                            tg.showAlert('❌ ' + (data.error || 'Ошибка'));
+                        }
+                    } catch(e) { tg.showAlert('❌ Ошибка'); }
+                }
+            });
+        }
+        
+        const withdrawModal = document.getElementById('withdraw-modal');
+        const withdrawBtn = document.getElementById('withdraw-btn');
+        
+        function openWithdrawModal() {
+            withdrawModal.classList.add('active');
+            document.getElementById('withdraw-balance').textContent = `${currentBalance} ⭐`;
+            loadWithdrawHistory();
+            const amountInput = document.getElementById('withdraw-amount');
+            const netSpan = document.getElementById('withdraw-net');
+            amountInput.oninput = () => { netSpan.textContent = `${parseInt(amountInput.value) || 0} ⭐`; };
+        }
+        
+        function closeWithdrawModal() { withdrawModal.classList.remove('active'); }
+        
+        if (withdrawBtn) withdrawBtn.onclick = openWithdrawModal;
+        document.getElementById('withdraw-modal-close').onclick = closeWithdrawModal;
+        document.getElementById('submit-withdraw-btn').onclick = requestWithdraw;
+        withdrawModal.onclick = (e) => { if (e.target === withdrawModal) closeWithdrawModal(); };
+        
+        tapArea.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            score++;
+            scoreSpan.textContent = score;
+            playTapSound();
+            const rect = tapArea.getBoundingClientRect();
+            createFloatingScore(rect.left + rect.width/2, rect.top + rect.height/2);
+            if (score % 10 === 0) {
+                fetch('/api/update-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
+                }).catch(e => console.error);
+            }
+        });
+        
+        backBtn.onclick = () => {
+            if (timerInterval) clearInterval(timerInterval);
+            if (updateGameInfoInterval) clearInterval(updateGameInfoInterval);
+            gameActive = false; gameStarted = false; score = 0; scoreSpan.textContent = '0';
+            selectorScreen.classList.remove('hide');
+            gameScreen.classList.remove('active');
+            loadGameTypes();
+        };
+        
+        document.body.addEventListener('click', () => { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); });
+        
+        // Инициализация
+        loadGameTypes();
+        loadBalance();
+        initTonConnect();
+        setInterval(getLeaderboard, 3000);
+        setInterval(loadBalance, 10000);
+    </script>
+</body>
+</html>
