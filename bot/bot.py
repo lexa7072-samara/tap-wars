@@ -6,7 +6,7 @@ from aiogram.filters import Command
 from aiogram.enums import ContentType
 
 # Получаем переменные окружения
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "7719717032:AAG4GwZp_2CRecHJ4mrsKKSIntgUsgqggEk"
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://tap-wars.onrender.com")
 
 # Проверка токена
