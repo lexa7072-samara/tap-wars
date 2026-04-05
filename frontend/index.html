@@ -528,6 +528,15 @@
                 manifestUrl: 'https://tap-wars.onrender.com/tonconnect-manifest.json',
                 buttonRootId: 'ton-connect-container'
             });
+
+            setTimeout(() => {
+            const buyBtn = document.getElementById('buy-ticket-btn');
+              if (buyBtn && buyBtn.disabled) {
+                  buyBtn.disabled = false;
+                  buyBtn.textContent = '🎫 Купить билет';
+                  console.log('🔄 Кнопка принудительно разблокирована');
+            }
+            }, 1000);
             
             // Настройка возврата в Mini App после подключения кошелька [citation:2][citation:6]
             tonConnectUI.uiOptions = {
