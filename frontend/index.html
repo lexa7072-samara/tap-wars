@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Tap Wars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -148,6 +149,10 @@
             background: #55efc4;
             color: #006266;
         }
+        .game-status.ended {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
         .stats-panel {
             display: flex;
             justify-content: space-between;
@@ -184,6 +189,53 @@
             cursor: pointer;
             margin-top: 10px;
         }
+        .buy-ton-btn {
+            background: linear-gradient(135deg, #0098ea 0%, #0066cc 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .ton-connect-btn {
+            background: #0098ea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .wallet-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: white;
+        }
+        .wallet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .wallet-balance {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .withdraw-btn {
+            background: #ffd700;
+            color: #2d3436;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -198,6 +250,19 @@
         <div id="game-screen" class="game-screen">
             <button class="back-btn" id="back-btn">← Назад к выбору</button>
             
+            <div class="wallet-panel">
+                <div class="wallet-header">
+                    <span>💰 Мой кошелёк</span>
+                    <div>
+                        <button class="ton-connect-btn" id="ton-connect-btn">🔗 TON Wallet</button>
+                        <button class="withdraw-btn" id="withdraw-btn">💸 Вывести</button>
+                    </div>
+                </div>
+                <div class="wallet-balance">
+                    <span id="wallet-balance">0</span> ⭐
+                </div>
+            </div>
+            
             <div class="stats-panel">
                 <div>👥 Игроков: <span id="players-count">0</span>/<span id="max-players">0</span></div>
                 <div>🏆 Приз: <span id="prize-pool">0</span> ⭐</div>
@@ -210,7 +275,8 @@
             
             <div class="score">🎯 Счёт: <span id="score">0</span></div>
             
-            <button class="buy-btn" id="buy-ticket-btn">🎫 Купить билет</button>
+            <button class="buy-btn" id="buy-ticket-btn">🎫 Купить билет (временно недоступно)</button>
+            <button class="buy-ton-btn" id="buy-ton-btn" style="display: none;">💎 Купить за TON</button>
             
             <div class="leaderboard">
                 <h3>🏆 Топ игроков</h3>
@@ -225,6 +291,46 @@
         tg.expand();
         tg.ready();
         
+        // TON Connect
+        let tonConnectUI = null;
+        let tonWalletAddress = null;
+        
+        // Инициализация TON Connect
+        function initTonConnect() {
+            try {
+                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                    manifestUrl: 'https://tap-wars.onrender.com/tonconnect-manifest.json',
+                    buttonRootId: 'ton-connect-btn'
+                });
+                
+                tonConnectUI.onStatusChange((wallet) => {
+                    if (wallet) {
+                        tonWalletAddress = wallet.account.address;
+                        document.getElementById('ton-connect-btn').textContent = '✅ Кошелёк подключён';
+                        console.log('TON Wallet connected:', tonWalletAddress);
+                    } else {
+                        tonWalletAddress = null;
+                        document.getElementById('ton-connect-btn').textContent = '🔗 TON Wallet';
+                    }
+                });
+            } catch(e) {
+                console.error('TON Connect init error:', e);
+            }
+        }
+        
+        // Подключение кошелька
+        async function connectTonWallet() {
+            if (!tonConnectUI) {
+                initTonConnect();
+            }
+            try {
+                await tonConnectUI.openModal();
+            } catch(e) {
+                console.error('Connect error:', e);
+                tg.showAlert('❌ Ошибка подключения кошелька');
+            }
+        }
+        
         // Данные пользователя
         const userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 10000);
         const username = tg.initDataUnsafe?.user?.username || 'Player';
@@ -238,8 +344,11 @@
         let currentGameId = null;
         let score = 0;
         let gameActive = false;
+        let hasTicket = false;
         let timeLeft = 60;
         let timerInterval = null;
+        let gameStarted = false;
+        let playersInterval = null;
         
         // DOM элементы
         const selectorScreen = document.getElementById('selector-screen');
@@ -254,7 +363,9 @@
         const maxPlayersSpan = document.getElementById('max-players');
         const prizePoolSpan = document.getElementById('prize-pool');
         const buyTicketBtn = document.getElementById('buy-ticket-btn');
+        const buyTonBtn = document.getElementById('buy-ton-btn');
         const leaderboardDiv = document.getElementById('leaderboard-list');
+        const tonConnectBtn = document.getElementById('ton-connect-btn');
         
         // Конфигурация игр
         const GAME_TYPES = {
@@ -263,6 +374,11 @@
             vip: { name: "VIP", emoji: "🟣", ticket_price: 100, max_players: 10, prize_pool: 750, duration: 60 },
             duel: { name: "Дуэль", emoji: "⚔️", ticket_price: 10, max_players: 2, prize_pool: 15, duration: 30 }
         };
+        
+        // TON цена (примерная: 700⭐ = 1 TON)
+        function getTonPrice(stars) {
+            return (stars / 700).toFixed(5);
+        }
         
         // Отображение карточек игр
         function displayGames() {
@@ -312,15 +428,24 @@
             score = 0;
             scoreSpan.textContent = '0';
             gameActive = false;
+            gameStarted = false;
+            hasTicket = false;
             gameStatusSpan.className = 'game-status waiting';
             gameStatusSpan.innerHTML = '⏳ Ожидание игроков...';
             tapArea.style.opacity = '1';
             tapArea.style.pointerEvents = 'auto';
             
-            // Показываем кнопку покупки
+            // Показываем кнопки покупки
             buyTicketBtn.style.display = 'block';
-            buyTicketBtn.textContent = `🎫 Купить билет (${config.ticket_price} ⭐)`;
-            buyTicketBtn.disabled = false;
+            buyTicketBtn.disabled = true;
+            buyTicketBtn.textContent = '🎫 Купить билет (временно недоступно)';
+            buyTonBtn.style.display = 'block';
+            buyTonBtn.textContent = `💎 Купить за ${getTonPrice(config.ticket_price)} TON`;
+            buyTonBtn.disabled = false;
+            
+            // Останавливаем старые интервалы
+            if (playersInterval) clearInterval(playersInterval);
+            if (timerInterval) clearInterval(timerInterval);
             
             // Запускаем ожидание
             startWaiting();
@@ -328,17 +453,16 @@
         
         // Ожидание начала игры
         function startWaiting() {
-            // Симуляция набора игроков (для теста)
             let players = 1;
             playersCountSpan.textContent = players;
             
-            const interval = setInterval(() => {
-                if (players < selectedGameConfig.max_players) {
+            playersInterval = setInterval(() => {
+                if (!gameStarted && players < selectedGameConfig.max_players) {
                     players++;
                     playersCountSpan.textContent = players;
                     
-                    if (players >= selectedGameConfig.max_players) {
-                        clearInterval(interval);
+                    if (players >= selectedGameConfig.max_players && !gameStarted) {
+                        clearInterval(playersInterval);
                         startGame();
                     }
                 }
@@ -347,6 +471,7 @@
         
         // Начало игры
         function startGame() {
+            gameStarted = true;
             gameActive = true;
             gameStatusSpan.className = 'game-status playing';
             gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
@@ -379,7 +504,68 @@
             gameStatusSpan.className = 'game-status ended';
             gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
             
+            // Отправляем результат на сервер
+            fetch('/api/update-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
+            }).catch(e => console.error);
+            
             tg.showAlert(`Игра окончена!\nВаш результат: ${score} тапов!`);
+            loadBalance();
+            loadLeaderboard();
+        }
+        
+        // Покупка билета за TON
+        async function buyTicketWithTon() {
+            if (!tonWalletAddress) {
+                tg.showAlert('⚠️ Сначала подключите TON кошелёк');
+                await connectTonWallet();
+                return;
+            }
+            
+            const priceInTon = getTonPrice(selectedGameConfig.ticket_price);
+            
+            tg.showPopup({
+                title: 'Подтверждение оплаты',
+                message: `Купить билет на игру "${selectedGameConfig.name}" за ${priceInTon} TON?`,
+                buttons: [
+                    {id: 'confirm', type: 'default', text: '✅ Оплатить'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, async (buttonId) => {
+                if (buttonId === 'confirm') {
+                    buyTonBtn.disabled = true;
+                    buyTonBtn.textContent = '⏳ Оплата...';
+                    
+                    try {
+                        const transaction = {
+                            validUntil: Math.floor(Date.now() / 1000) + 600,
+                            messages: [
+                                {
+                                    address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG9dA",
+                                    amount: (parseFloat(priceInTon) * 1000000000).toString(),
+                                }
+                            ]
+                        };
+                        
+                        const result = await tonConnectUI.sendTransaction(transaction);
+                        console.log('Transaction sent:', result);
+                        
+                        // Имитация успешной оплаты (пока без бэкенда)
+                        tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                        hasTicket = true;
+                        buyTicketBtn.style.display = 'none';
+                        buyTonBtn.style.display = 'none';
+                        
+                    } catch(e) {
+                        console.error('TON payment error:', e);
+                        tg.showAlert('❌ Ошибка при оплате');
+                        buyTonBtn.disabled = false;
+                        buyTonBtn.textContent = `💎 Купить за ${priceInTon} TON`;
+                    }
+                }
+            });
         }
         
         // Обработка тапа
@@ -396,20 +582,23 @@
             }, 100);
         });
         
-        // Покупка билета
-        buyTicketBtn.onclick = () => {
-            tg.showAlert(`✅ Билет на игру "${selectedGameConfig.name}" куплен!\nПрисоединяемся к игре...`);
-            buyTicketBtn.style.display = 'none';
-        };
-        
         // Кнопка назад
         backBtn.onclick = () => {
             if (timerInterval) clearInterval(timerInterval);
+            if (playersInterval) clearInterval(playersInterval);
             gameActive = false;
+            gameStarted = false;
             score = 0;
             selectorScreen.classList.remove('hide');
             gameScreen.classList.remove('active');
+            loadLeaderboard();
         };
+        
+        // Кнопка TON Connect
+        tonConnectBtn.onclick = connectTonWallet;
+        
+        // Кнопка покупки за TON
+        buyTonBtn.onclick = buyTicketWithTon;
         
         // Загрузка лидерборда
         async function loadLeaderboard() {
@@ -448,6 +637,7 @@
         }
         
         // Инициализация
+        initTonConnect();
         displayGames();
         loadLeaderboard();
         loadBalance();
