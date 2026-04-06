@@ -216,6 +216,12 @@ async def get_balance(user_id: int):
         return {"success": True, "balance": user.get("balance", 0)}
     return {"success": False, "balance": 0}
 
+@app.get("/api/user-ticket/{user_id}/{game_type}")
+async def get_user_ticket(user_id: int, game_type: str):
+    """Проверить наличие билета у пользователя"""
+    has_ticket = await db.check_user_ticket(user_id, game_type)
+    return {"has_ticket": has_ticket}
+    
 # ========== API ВЫВОДА СРЕДСТВ ==========
 
 @app.post("/api/withdraw/request")
