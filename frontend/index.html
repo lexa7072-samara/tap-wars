@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Tap Wars</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         * {
@@ -14,83 +15,122 @@
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
+        
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             padding: 20px;
+            overflow-x: hidden;
         }
+        
         .container {
             max-width: 500px;
             margin: 0 auto;
         }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(20deg); opacity: 0; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .selector-screen {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .selector-screen.hide {
+            display: none;
+        }
+        
         h1 {
             text-align: center;
             color: white;
             margin-bottom: 20px;
             font-size: 32px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            animation: bounce 2s ease infinite;
         }
+        
         .game-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 20px;
             margin-bottom: 15px;
-            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
             transition: transform 0.2s;
+            cursor: pointer;
         }
+        
         .game-card:active {
             transform: scale(0.98);
         }
+        
         .game-card.mini { border-left: 5px solid #00b894; }
         .game-card.standard { border-left: 5px solid #0984e3; }
         .game-card.vip { border-left: 5px solid #6c5ce7; }
         .game-card.duel { border-left: 5px solid #e17055; }
+        
         .game-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
-        .game-title {
-            font-size: 24px;
-            font-weight: bold;
-        }
+        
+        .game-title { font-size: 24px; font-weight: bold; }
         .game-price {
+            font-size: 20px;
+            font-weight: bold;
             background: #fdcb6e;
             padding: 5px 12px;
             border-radius: 20px;
-            font-weight: bold;
+            color: #2d3436;
         }
+        
         .game-stats {
             display: flex;
             justify-content: space-around;
             margin: 15px 0;
-            color: #666;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 10px;
         }
+        
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 20px; font-weight: bold; color: #2d3436; }
+        .stat-label { font-size: 12px; color: #666; }
+        .prize { color: #00b894; }
+        .game-description { color: #666; font-size: 14px; margin-top: 10px; text-align: center; }
+        
         .join-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             padding: 12px;
             border-radius: 10px;
-            width: 100%;
             font-size: 16px;
-            font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            width: 100%;
+            margin-top: 15px;
+            font-weight: bold;
         }
-        .selector-screen {
-            display: block;
-        }
-        .selector-screen.hide {
-            display: none;
-        }
-        .game-screen {
-            display: none;
-        }
-        .game-screen.active {
-            display: block;
-        }
+        
+        .join-btn:active { transform: scale(0.98); }
+        
+        .game-screen { display: none; }
+        .game-screen.active { display: block; animation: slideIn 0.3s ease; }
+        
         .back-btn {
             background: rgba(255,255,255,0.2);
             color: white;
@@ -99,7 +139,102 @@
             border-radius: 10px;
             margin-bottom: 15px;
             cursor: pointer;
+            font-size: 14px;
         }
+        
+        .player-info {
+            text-align: center;
+            color: white;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        
+        .wallet-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            color: white;
+        }
+        
+        .wallet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .wallet-balance { font-size: 28px; font-weight: bold; }
+        .wallet-balance small { font-size: 14px; opacity: 0.8; }
+        
+        .ton-connect-container {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .withdraw-btn, .ton-wallet-btn {
+            background: #ffd700;
+            color: #2d3436;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            width: auto;
+            margin-top: 0;
+        }
+        
+        .ton-wallet-btn {
+            background: #0098ea;
+            color: white;
+        }
+        
+        .stats-panel {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.9);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .stat { text-align: center; }
+        .stat-label { font-size: 12px; color: #666; }
+        .stat-value { font-size: 18px; font-weight: bold; color: #2d3436; }
+        
+        .timer {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+            color: #fdcb6e;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .game-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .game-status.waiting { background: #ffeaa7; color: #d63031; }
+        .game-status.playing { background: #55efc4; color: #006266; animation: pulse 1s infinite; }
+        .game-status.ended { background: #dfe6e9; color: #2d3436; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
         .tap-area {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             border-radius: 50%;
@@ -112,10 +247,11 @@
             font-size: 64px;
             cursor: pointer;
             transition: transform 0.05s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-        .tap-area:active {
-            transform: scale(0.95);
-        }
+        
+        .tap-area:active { transform: scale(0.95); }
+        
         .score {
             font-size: 28px;
             font-weight: bold;
@@ -123,124 +259,142 @@
             margin: 20px 0;
             color: white;
         }
-        .score span {
-            font-size: 48px;
-            color: #fdcb6e;
-        }
-        .timer {
-            font-size: 36px;
+        
+        .score span { font-size: 48px; color: #fdcb6e; }
+        
+        .floating-score {
+            position: fixed;
+            font-size: 28px;
             font-weight: bold;
-            text-align: center;
-            margin: 15px 0;
             color: #fdcb6e;
+            text-shadow: 0 0 5px #ff6b6b;
+            pointer-events: none;
+            z-index: 1000;
+            animation: float 1s ease-out forwards;
         }
-        .game-status {
-            text-align: center;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px 0;
-            font-weight: bold;
-        }
-        .game-status.waiting {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-        .game-status.playing {
-            background: #55efc4;
-            color: #006266;
-        }
-        .game-status.ended {
-            background: #dfe6e9;
-            color: #2d3436;
-        }
-        .stats-panel {
-            display: flex;
-            justify-content: space-between;
-            background: rgba(255,255,255,0.9);
-            padding: 12px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
+        
         .leaderboard {
             background: rgba(255,255,255,0.95);
             border-radius: 15px;
             padding: 15px;
             margin-top: 20px;
         }
-        .leaderboard h3 {
-            text-align: center;
-            margin-bottom: 10px;
-        }
+        
+        .leaderboard h3 { margin-bottom: 10px; text-align: center; color: #2d3436; }
+        .leaderboard-list { max-height: 250px; overflow-y: auto; }
+        
         .leaderboard-item {
             display: flex;
             justify-content: space-between;
             padding: 8px;
             border-bottom: 1px solid #eee;
         }
-        .buy-btn {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        
+        .leaderboard-item.top-1 { background: linear-gradient(90deg, #ffd70020, transparent); }
+        .leaderboard-item.top-2 { background: linear-gradient(90deg, #c0c0c020, transparent); }
+        .leaderboard-item.top-3 { background: linear-gradient(90deg, #cd7f3220, transparent); }
+        
+        button {
             color: white;
             border: none;
             padding: 12px;
             border-radius: 10px;
-            width: 100%;
             font-size: 16px;
-            font-weight: bold;
             cursor: pointer;
             margin-top: 10px;
-        }
-        .buy-ton-btn {
-            background: linear-gradient(135deg, #0098ea 0%, #0066cc 100%);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
             width: 100%;
-            font-size: 16px;
             font-weight: bold;
-            cursor: pointer;
-            margin-top: 5px;
         }
-        .ton-connect-btn {
-            background: #0098ea;
-            color: white;
-            border: none;
-            padding: 8px 16px;
+        
+        button:active { transform: scale(0.98); }
+        
+        .buy-btn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .buy-ton-btn { background: linear-gradient(135deg, #0098ea 0%, #0066cc 100%); }
+        .buy-btn.disabled, .buy-ton-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: white;
             border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-left: 10px;
+            padding: 20px;
+            max-width: 350px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
         }
-        .wallet-panel {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            color: white;
-        }
-        .wallet-header {
+        
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
         }
-        .wallet-balance {
-            font-size: 28px;
-            font-weight: bold;
+        
+        .modal-title { font-size: 20px; font-weight: bold; color: #2d3436; }
+        .modal-close { font-size: 24px; cursor: pointer; color: #999; }
+        
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            margin-top: 5px;
         }
-        .withdraw-btn {
-            background: #ffd700;
-            color: #2d3436;
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: none;
+        
+        .withdraw-history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        
+        .withdraw-status-pending { color: #fdcb6e; }
+        .withdraw-status-completed { color: #00b894; }
+        .withdraw-status-cancelled { color: #ff6b6b; }
+        
+        .sound-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+            font-size: 24px;
+            z-index: 100;
+            backdrop-filter: blur(5px);
         }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        
+        .price-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .price-row button {
+            flex: 1;
         }
     </style>
 </head>
@@ -254,88 +408,301 @@
         
         <!-- Экран игры -->
         <div id="game-screen" class="game-screen">
-            <button class="back-btn" id="back-btn">← Назад к выбору</button>
+            <button class="back-btn" id="back-btn">← Назад</button>
+            
+            <div class="player-info" id="player-info"></div>
             
             <div class="wallet-panel">
                 <div class="wallet-header">
                     <span>💰 Мой кошелёк</span>
-                    <div>
-                        <button class="ton-connect-btn" id="ton-connect-btn">🔗 TON Wallet</button>
+                    <div class="ton-connect-container">
+                        <button class="ton-wallet-btn" id="ton-connect-btn">🔗 TON Wallet</button>
                         <button class="withdraw-btn" id="withdraw-btn">💸 Вывести</button>
                     </div>
                 </div>
                 <div class="wallet-balance">
-                    <span id="wallet-balance">0</span> ⭐
+                    <span id="wallet-balance">0</span> <small>⭐</small>
                 </div>
             </div>
             
             <div class="stats-panel">
-                <div>👥 Игроков: <span id="players-count">0</span>/<span id="max-players">0</span></div>
-                <div>🏆 Приз: <span id="prize-pool">0</span> ⭐</div>
+                <div class="stat">
+                    <div class="stat-label">👥 Игроки</div>
+                    <div class="stat-value"><span id="players-count">0</span>/<span id="max-players">0</span></div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">🏆 Приз</div>
+                    <div class="stat-value" id="prize-pool">0 ⭐</div>
+                </div>
             </div>
             
             <div class="timer" id="timer">⏱️ 00:00</div>
             <div class="game-status waiting" id="game-status">⏳ Ожидание игроков...</div>
-            
             <div class="tap-area" id="tap-area">👆</div>
-            
             <div class="score">🎯 Счёт: <span id="score">0</span></div>
             
-            <button class="buy-btn" id="buy-ticket-btn" style="display: none;">🎫 Купить билет</button>
-            <button class="buy-ton-btn" id="buy-ton-btn" style="display: none;">💎 Купить за TON</button>
+            <div class="price-row">
+                <button class="buy-btn" id="buy-ticket-btn" style="display: none;">🎫 Купить за Stars</button>
+                <button class="buy-ton-btn" id="buy-ton-btn" style="display: none;">💎 Купить за TON</button>
+            </div>
             
             <div class="leaderboard">
                 <h3>🏆 Топ игроков</h3>
-                <div id="leaderboard-list">Загрузка...</div>
+                <div class="leaderboard-list" id="leaderboard-list">Загрузка...</div>
             </div>
         </div>
     </div>
-
+    
+    <div class="sound-toggle" id="sound-toggle">🔊</div>
+    
+    <!-- Модальное окно вывода -->
+    <div id="withdraw-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">💸 Вывод звезд</span>
+                <span class="modal-close" id="withdraw-modal-close">&times;</span>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <div style="color: #666; margin-bottom: 5px;">Доступно к выводу:</div>
+                <div style="font-size: 24px; font-weight: bold; color: #00b894;" id="withdraw-balance">0 ⭐</div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <div style="color: #666; margin-bottom: 5px;">Сумма вывода (мин. 100 ⭐):</div>
+                <input type="number" id="withdraw-amount" placeholder="100" class="input-field">
+            </div>
+            
+            <div style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 10px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>💰 К получению:</span>
+                    <span id="withdraw-net" style="font-weight: bold;">0 ⭐</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
+                    <span>Комиссия:</span>
+                    <span>0 ⭐ (бесплатно)</span>
+                </div>
+            </div>
+            
+            <button id="submit-withdraw-btn" style="background: linear-gradient(135deg, #00b894 0%, #55efc4 100%);">
+                💸 Отправить запрос
+            </button>
+            
+            <div id="withdraw-history" style="margin-top: 20px;">
+                <h4 style="margin-bottom: 10px;">История выводов</h4>
+                <div id="withdraw-history-list" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+    
     <script>
-        // ========== ИНИЦИАЛИЗАЦИЯ TELEGRAM ==========
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
         
-        // ========== TON CONNECT ==========
+        // TON Connect инициализация
         let tonConnectUI = null;
         let tonWalletAddress = null;
         
+        // Инициализация TON Connect
         function initTonConnect() {
-    try {
-        // Упрощённая инициализация без манифеста
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            buttonRootId: 'ton-connect-btn'
-        });
+            const tonConnectDiv = document.createElement('div');
+            tonConnectDiv.id = 'ton-connect-container';
+            tonConnectDiv.style.display = 'none';
+            document.body.appendChild(tonConnectDiv);
+            
+            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                manifestUrl: 'https://tap-wars.onrender.com/tonconnect-manifest.json',
+                buttonRootId: 'ton-connect-container'
+            });
+            
+            // Настройка возврата в Mini App после подключения кошелька [citation:2][citation:6]
+            tonConnectUI.uiOptions = {
+                twaReturnUrl: 'https://t.me/YOUR_BOT_USERNAME/play'
+            };
+            
+            // Слушаем изменения статуса кошелька
+            tonConnectUI.onStatusChange((wallet) => {
+                if (wallet) {
+                    tonWalletAddress = wallet.account.address;
+                    console.log('TON Wallet connected:', tonWalletAddress);
+                    document.getElementById('ton-connect-btn').textContent = '🔗 Кошелёк подключён';
+                    document.getElementById('ton-connect-btn').style.background = '#00b894';
+                } else {
+                    tonWalletAddress = null;
+                    document.getElementById('ton-connect-btn').textContent = '🔗 TON Wallet';
+                    document.getElementById('ton-connect-btn').style.background = '#0098ea';
+                }
+            });
+        }
         
-        // Не ждём статус, просто подключаем
-        console.log('TON Connect initialized');
-    } catch(e) {
-        console.error('TON Connect init error:', e);
-    }
-}
-
-async function connectTonWallet() {
-    if (!tonConnectUI) {
-        initTonConnect();
-    }
-    try {
-        // Прямой вызов подключения
-        await tonConnectUI.openModal();
-    } catch(e) {
-        console.error('Connect error:', e);
-        tg.showAlert('❌ Ошибка подключения кошелька: ' + e.message);
-    }
-}
+        // Подключение TON кошелька
+        async function connectTonWallet() {
+            if (!tonConnectUI) {
+                initTonConnect();
+            }
+            try {
+                await tonConnectUI.openModal();
+            } catch(e) {
+                console.error('TON Connect error:', e);
+            }
+        }
         
-        // ========== ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ==========
+        // Покупка билета за TON
+        async function buyTicketWithTon() {
+            if (!tonWalletAddress) {
+                tg.showAlert('⚠️ Сначала подключите TON кошелёк');
+                await connectTonWallet();
+                return;
+            }
+            
+            const priceInTon = selectedGameConfig.ticket_price / 1000; // 1000⭐ = 1 TON (примерный курс)
+            
+            tg.showPopup({
+                title: 'Подтверждение оплаты',
+                message: `Купить билет на игру "${selectedGameConfig.name}" за ${priceInTon} TON?`,
+                buttons: [
+                    {id: 'confirm', type: 'default', text: '✅ Оплатить'},
+                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
+                ]
+            }, async (buttonId) => {
+                if (buttonId === 'confirm') {
+                    try {
+                        // Создаём транзакцию [citation:2][citation:6]
+                        const transaction = {
+                            validUntil: Math.floor(Date.now() / 1000) + 600, // 10 минут
+                            messages: [
+                                {
+                                    address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO", // Замените на ваш TON адрес
+                                    amount: (priceInTon * 1000000000).toString(), // в нанотонах
+                                }
+                            ]
+                        };
+                        
+                        const result = await tonConnectUI.sendTransaction(transaction);
+                        console.log('Transaction sent:', result);
+                        
+                        // Отправляем подтверждение на бэкенд
+                        const response = await fetch('/api/payment/ton/confirm', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                user_id: userId,
+                                game_id: currentGameId,
+                                game_type: selectedGameType,
+                                tx_hash: result
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                            hasTicket = true;
+                            buyTicketBtn.style.display = 'none';
+                            buyTonBtn.style.display = 'none';
+                            tapArea.style.opacity = '1';
+                            tapArea.style.pointerEvents = 'auto';
+                            await joinGame();
+                        } else {
+                            tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось подтвердить оплату'));
+                        }
+                    } catch(e) {
+                        console.error('TON payment error:', e);
+                        tg.showAlert('❌ Ошибка при оплате TON');
+                    }
+                }
+            });
+        }
+        
+        // Звуковые эффекты (как в предыдущей версии)
+        let soundEnabled = true;
+        let audioCtx = null;
+        let currentBalance = 0;
+        
+        function initAudio() {
+            if (!audioCtx && soundEnabled) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playTapSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.value = 800;
+                    gain.gain.value = 0.1;
+                    osc.start();
+                    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }
+            } catch(e) {}
+        }
+        
+        function playGameStartSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx) {
+                    const freqs = [523.25, 587.33, 659.25, 783.99];
+                    freqs.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.frequency.value = freq;
+                        gain.gain.value = 0.1;
+                        osc.start(audioCtx.currentTime + i * 0.1);
+                        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + i * 0.1 + 0.3);
+                        osc.stop(audioCtx.currentTime + i * 0.1 + 0.3);
+                    });
+                }
+            } catch(e) {}
+        }
+        
+        function playGameEndSound() {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx) {
+                    const freqs = [783.99, 659.25, 523.25];
+                    freqs.forEach((freq, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.frequency.value = freq;
+                        gain.gain.value = 0.1;
+                        osc.start(audioCtx.currentTime + i * 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + i * 0.15 + 0.5);
+                        osc.stop(audioCtx.currentTime + i * 0.15 + 0.5);
+                    });
+                }
+            } catch(e) {}
+        }
+        
+        function createFloatingScore(x, y) {
+            const el = document.createElement('div');
+            el.className = 'floating-score';
+            el.textContent = '+1';
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+        
         const userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 10000);
         const username = tg.initDataUnsafe?.user?.username || 'Player';
-        const fullName = tg.initDataUnsafe?.user?.first_name || username;
+        const firstName = tg.initDataUnsafe?.user?.first_name || '';
+        const lastName = tg.initDataUnsafe?.user?.last_name || '';
+        const fullName = (firstName + ' ' + lastName).trim() || username;
         
-        console.log('👤 Пользователь:', fullName, 'ID:', userId);
-        
-        // ========== ИГРОВЫЕ ПЕРЕМЕННЫЕ ==========
         let selectedGameType = null;
         let selectedGameConfig = null;
         let currentGameId = null;
@@ -345,9 +712,7 @@ async function connectTonWallet() {
         let timeLeft = 60;
         let timerInterval = null;
         let gameStarted = false;
-        let playersInterval = null;
         
-        // ========== DOM ЭЛЕМЕНТЫ ==========
         const selectorScreen = document.getElementById('selector-screen');
         const gameScreen = document.getElementById('game-screen');
         const gamesList = document.getElementById('games-list');
@@ -362,89 +727,182 @@ async function connectTonWallet() {
         const buyTicketBtn = document.getElementById('buy-ticket-btn');
         const buyTonBtn = document.getElementById('buy-ton-btn');
         const leaderboardDiv = document.getElementById('leaderboard-list');
+        const playerInfoSpan = document.getElementById('player-info');
+        const soundToggle = document.getElementById('sound-toggle');
         const tonConnectBtn = document.getElementById('ton-connect-btn');
         
-        // ========== КОНФИГУРАЦИЯ ИГР ==========
-        const GAME_TYPES = {
-            mini: { name: "Мини", emoji: "🟢", ticket_price: 10, max_players: 10, prize_pool: 60, duration: 30 },
-            standard: { name: "Стандарт", emoji: "🔵", ticket_price: 50, max_players: 20, prize_pool: 750, duration: 60 },
-            vip: { name: "VIP", emoji: "🟣", ticket_price: 100, max_players: 10, prize_pool: 750, duration: 60 },
-            duel: { name: "Дуэль", emoji: "⚔️", ticket_price: 10, max_players: 2, prize_pool: 15, duration: 30 }
+        playerInfoSpan.innerHTML = `👤 ${fullName} (@${username})`;
+        
+        soundToggle.onclick = () => {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
         };
         
-        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-        function getTonPrice(stars) {
-            return (stars / 700).toFixed(5);
-        }
-        
-        // ========== API ЗАПРОСЫ ==========
-        async function refreshGameState() {
-            try {
-                const response = await fetch('/api/game/current');
-                const data = await response.json();
-                if (data.game_id) {
-                    currentGameId = data.game_id;
-                    playersCountSpan.textContent = data.players_count || 0;
-                    maxPlayersSpan.textContent = data.max_players || selectedGameConfig?.max_players || 0;
-                    console.log('🔄 Game state:', data.players_count, '/', data.max_players, 'players');
-                    return data;
-                }
-            } catch(e) {
-                console.error('Refresh error:', e);
-            }
-            return null;
-        }
-        
-        async function loadLeaderboard() {
-            try {
-                const response = await fetch('/api/leaderboard');
-                const data = await response.json();
-                if (data.leaders && data.leaders.length > 0) {
-                    leaderboardDiv.innerHTML = '';
-                    data.leaders.slice(0, 10).forEach((player, idx) => {
-                        const item = document.createElement('div');
-                        item.className = 'leaderboard-item';
-                        let medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : '';
-                        item.innerHTML = `<span>${medal}${idx+1}. ${player.full_name || player.username}</span><span>${player.score || 0} 👆</span>`;
-                        leaderboardDiv.appendChild(item);
-                    });
-                } else {
-                    leaderboardDiv.innerHTML = 'Нет данных';
-                }
-            } catch(e) {
-                console.error('Leaderboard error:', e);
-                leaderboardDiv.innerHTML = 'Ошибка загрузки';
-            }
-        }
+        tonConnectBtn.onclick = connectTonWallet;
         
         async function loadBalance() {
             try {
                 const response = await fetch(`/api/balance/${userId}`);
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('wallet-balance').textContent = data.balance;
+                    currentBalance = data.balance;
+                    document.getElementById('wallet-balance').textContent = currentBalance;
                 }
-            } catch(e) {
-                console.error('Balance error:', e);
-            }
+            } catch(e) { console.error(e); }
         }
         
-        async function checkUserTicket() {
+        async function loadGameTypes() {
             try {
-                const response = await fetch(`/api/user-ticket/${userId}/${selectedGameType}`);
+                const response = await fetch('/api/game/types');
                 const data = await response.json();
-                if (data.has_ticket) {
-                    hasTicket = true;
-                    buyTicketBtn.style.display = 'none';
-                    buyTonBtn.style.display = 'none';
-                    await joinGameAfterTicket();
-                }
+                displayGames(data.types);
             } catch(e) {
-                console.error('Check ticket error:', e);
+                displayGames({
+                    mini: { name: "Мини", emoji: "🟢", ticket_price: 10, max_players: 10, prize_pool: 60, duration: 30, description: "Быстрая игра" },
+                    standard: { name: "Стандарт", emoji: "🔵", ticket_price: 50, max_players: 20, prize_pool: 750, duration: 60, description: "Классическая битва" },
+                    vip: { name: "VIP", emoji: "🟣", ticket_price: 100, max_players: 10, prize_pool: 750, duration: 60, description: "Элитная игра" },
+                    duel: { name: "Дуэль", emoji: "⚔️", ticket_price: 10, max_players: 2, prize_pool: 15, duration: 30, description: "Битва 1 на 1" }
+                });
             }
         }
         
-        async function joinGameAfterTicket() {
+        function displayGames(types) {
+            gamesList.innerHTML = '';
+            const order = ['mini', 'standard', 'vip', 'duel'];
+            for (const key of order) {
+                if (!types[key]) continue;
+                const config = types[key];
+                const card = document.createElement('div');
+                card.className = `game-card ${key}`;
+                
+                let prizeText = '';
+                if (key === 'duel') {
+                    prizeText = '🏆 Победитель: 15 ⭐';
+                } else if (key === 'mini') {
+                    prizeText = '🏆 Топ-3: 35/15/10 ⭐';
+                } else {
+                    prizeText = `🏆 Призовой фонд: ${config.prize_pool} ⭐`;
+                }
+                
+                card.innerHTML = `
+                    <div class="game-header">
+                        <span class="game-title">${config.emoji} ${config.name}</span>
+                        <span class="game-price">${config.ticket_price} ⭐</span>
+                    </div>
+                    <div class="game-stats">
+                        <div class="stat-item"><div class="stat-value">${config.max_players}</div><div class="stat-label">игроков</div></div>
+                        <div class="stat-item"><div class="stat-value prize">${config.prize_pool} ⭐</div><div class="stat-label">приз</div></div>
+                        <div class="stat-item"><div class="stat-value">${config.duration} сек</div><div class="stat-label">длительность</div></div>
+                    </div>
+                    <div class="game-description">${config.description}</div>
+                    <div style="font-size: 12px; color: #00b894; text-align: center; margin-top: 5px;">${prizeText}</div>
+                    <button class="join-btn" data-type="${key}">Выбрать</button>
+                `;
+                
+                card.querySelector('.join-btn').onclick = () => selectGame(key, config);
+                gamesList.appendChild(card);
+            }
+        }
+        
+        async function selectGame(type, config) {
+            selectedGameType = type;
+            selectedGameConfig = config;
+            
+            try {
+                const response = await fetch('/api/game/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ game_type: type })
+                });
+                const data = await response.json();
+                currentGameId = data.game_id;
+            } catch(e) { currentGameId = Date.now(); }
+            
+            await checkTicket();
+            
+            selectorScreen.classList.add('hide');
+            gameScreen.classList.add('active');
+            
+            maxPlayersSpan.textContent = config.max_players;
+            prizePoolSpan.textContent = config.prize_pool;
+            timeLeft = config.duration;
+            timerSpan.textContent = `⏱️ ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`;
+            
+            await getCurrentGame();
+            updateGameInfoInterval = setInterval(updateGameInfo, 2000);
+        }
+        
+        async function checkTicket() {
+            hasTicket = false;
+            if (!hasTicket) {
+                buyTicketBtn.style.display = 'block';
+                buyTonBtn.style.display = 'block';
+                buyTicketBtn.textContent = `🎫 Купить за ${selectedGameConfig.ticket_price} ⭐`;
+                buyTonBtn.textContent = `💎 Купить за ${(selectedGameConfig.ticket_price / 1000).toFixed(3)} TON`;
+                tapArea.style.opacity = '0.5';
+                tapArea.style.pointerEvents = 'none';
+            } else {
+                buyTicketBtn.style.display = 'none';
+                buyTonBtn.style.display = 'none';
+                tapArea.style.opacity = '1';
+                tapArea.style.pointerEvents = 'auto';
+                await joinGame();
+            }
+        }
+        
+        buyTicketBtn.onclick = async () => {
+            buyTicketBtn.disabled = true;
+            buyTicketBtn.textContent = '⏳ Обработка...';
+            
+            try {
+                const response = await fetch('/api/payment/create-invoice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: userId, 
+                        game_id: currentGameId,
+                        game_type: selectedGameType,
+                        amount: selectedGameConfig.ticket_price 
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.success && data.invoice_link) {
+                    tg.openInvoice(data.invoice_link, async (status) => {
+                        if (status === 'paid') {
+                            tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            await checkTicket();
+                            if (hasTicket) {
+                                buyTicketBtn.style.display = 'none';
+                                buyTonBtn.style.display = 'none';
+                                tapArea.style.opacity = '1';
+                                tapArea.style.pointerEvents = 'auto';
+                                await joinGame();
+                            } else {
+                                await joinGameDirectly();
+                            }
+                        } else {
+                            buyTicketBtn.disabled = false;
+                            buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                        }
+                    });
+                } else {
+                    buyTicketBtn.disabled = false;
+                    buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                    tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось создать инвойс'));
+                }
+            } catch(e) {
+                console.error('Buy ticket error:', e);
+                buyTicketBtn.disabled = false;
+                buyTicketBtn.textContent = `🎫 Купить билет (${selectedGameConfig.ticket_price} ⭐)`;
+                tg.showAlert('❌ Ошибка соединения');
+            }
+        };
+        
+        buyTonBtn.onclick = buyTicketWithTon;
+        
+        async function joinGameDirectly() {
             try {
                 const response = await fetch(`/api/game/${currentGameId}/join`, {
                     method: 'POST',
@@ -453,28 +911,56 @@ async function connectTonWallet() {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    console.log('✅ Joined game successfully');
-                    await refreshGameState();
+                    hasTicket = true;
+                    buyTicketBtn.style.display = 'none';
+                    buyTonBtn.style.display = 'none';
+                    tapArea.style.opacity = '1';
+                    tapArea.style.pointerEvents = 'auto';
+                    tg.showAlert('✅ Присоединились к игре!');
+                    
+                    if (data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                        startGame();
+                    }
+                } else {
+                    tg.showAlert('❌ Не удалось присоединиться к игре');
                 }
             } catch(e) {
-                console.error('Join game error:', e);
+                console.error('Join direct error:', e);
             }
         }
         
-        // ========== ИГРОВАЯ ЛОГИКА ==========
+        async function joinGame() {
+            try {
+                const response = await fetch(`/api/game/${currentGameId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                const data = await response.json();
+                if (data.success && data.players_count >= selectedGameConfig.max_players && !gameStarted) {
+                    startGame();
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        function startGame() {
+            gameActive = true;
+            gameStarted = true;
+            gameStatusSpan.className = 'game-status playing';
+            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
+            playGameStartSound();
+            startTimer();
+        }
+        
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 if (!gameActive) return;
-                
                 if (timeLeft > 0) {
                     timeLeft--;
                     timerSpan.textContent = `⏱️ ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`;
                 }
-                
-                if (timeLeft <= 0) {
-                    endGame();
-                }
+                if (timeLeft <= 0) endGame();
             }, 1000);
         }
         
@@ -485,224 +971,169 @@ async function connectTonWallet() {
             tapArea.style.opacity = '0.5';
             gameStatusSpan.className = 'game-status ended';
             gameStatusSpan.innerHTML = '🏁 Игра окончена! 🏁';
+            playGameEndSound();
             
-            await fetch('/api/update-score', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
-            }).catch(e => console.error);
+            try {
+                await fetch('/api/update-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
+                });
+            } catch(e) {}
             
             tg.showAlert(`Игра окончена!\nВаш результат: ${score} тапов!`);
             await loadBalance();
-            await loadLeaderboard();
         }
         
-        function startGame() {
-            gameStarted = true;
-            gameActive = true;
-            gameStatusSpan.className = 'game-status playing';
-            gameStatusSpan.innerHTML = '🎮 ИГРА ИДЁТ! ТАПАЙ! 🎮';
-            startTimer();
+        async function getCurrentGame() {
+            try {
+                const response = await fetch('/api/game/current');
+                const data = await response.json();
+                playersCountSpan.textContent = data.players_count || 0;
+                return data;
+            } catch(e) { console.error(e); }
         }
         
-        async function startWaiting() {
-            await refreshGameState();
-            
-            playersInterval = setInterval(async () => {
-                if (gameStarted) return;
-                
-                try {
-                    const response = await fetch('/api/game/current');
-                    const game = await response.json();
-                    
-                    if (game.game_id) {
-                        currentGameId = game.game_id;
-                        playersCountSpan.textContent = game.players_count || 0;
-                        
-                        if (game.players_count >= selectedGameConfig.max_players && !gameStarted) {
-                            clearInterval(playersInterval);
-                            startGame();
-                        }
-                    }
-                } catch(e) {
-                    console.error('Error checking game state:', e);
+        let updateGameInfoInterval = null;
+        async function updateGameInfo() {
+            const game = await getCurrentGame();
+            if (game && game.players_count >= selectedGameConfig.max_players && !gameStarted) startGame();
+        }
+        
+        async function getLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+                if (data.leaders) {
+                    leaderboardDiv.innerHTML = '';
+                    data.leaders.slice(0, 10).forEach((player, idx) => {
+                        const item = document.createElement('div');
+                        item.className = 'leaderboard-item';
+                        if (idx === 0) item.classList.add('top-1');
+                        else if (idx === 1) item.classList.add('top-2');
+                        else if (idx === 2) item.classList.add('top-3');
+                        let medal = idx === 0 ? '🥇 ' : idx === 1 ? '🥈 ' : idx === 2 ? '🥉 ' : '';
+                        item.innerHTML = `<span>${medal}${idx+1}. ${player.full_name || player.username}</span><span>${player.score || 0} 👆</span>`;
+                        leaderboardDiv.appendChild(item);
+                    });
                 }
-            }, 2000);
+            } catch(e) { console.error(e); }
         }
         
-        // ========== ПОКУПКА БИЛЕТА ==========
-        async function buyTicketWithTon() {
-            if (!tonWalletAddress) {
-                tg.showAlert('⚠️ Сначала подключите TON кошелёк');
-                await connectTonWallet();
+        // Вывод средств
+        async function loadWithdrawHistory() {
+            try {
+                const response = await fetch(`/api/withdraw/history/${userId}`);
+                const data = await response.json();
+                const historyList = document.getElementById('withdraw-history-list');
+                if (data.history && data.history.length > 0) {
+                    historyList.innerHTML = '';
+                    data.history.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'withdraw-history-item';
+                        let statusClass = '', statusText = '';
+                        if (item.status === 'pending') { statusClass = 'withdraw-status-pending'; statusText = '⏳ Обрабатывается'; }
+                        else if (item.status === 'completed') { statusClass = 'withdraw-status-completed'; statusText = '✅ Выполнен'; }
+                        else { statusClass = 'withdraw-status-cancelled'; statusText = '❌ Отменён'; }
+                        div.innerHTML = `<span>${item.amount} ⭐</span><span class="${statusClass}">${statusText}</span><span style="font-size:12px;">${new Date(item.created_at).toLocaleDateString()}</span>`;
+                        historyList.appendChild(div);
+                    });
+                } else {
+                    historyList.innerHTML = '<div style="text-align:center;padding:20px;color:#999;">Нет запросов</div>';
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function requestWithdraw() {
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            if (!amount || amount < 100) {
+                tg.showAlert('❌ Минимальная сумма вывода: 100 ⭐');
+                return;
+            }
+            if (amount > currentBalance) {
+                tg.showAlert('❌ Недостаточно звезд');
                 return;
             }
             
-            const priceInTon = getTonPrice(selectedGameConfig.ticket_price);
-            
             tg.showPopup({
-                title: 'Подтверждение оплаты',
-                message: `Купить билет на игру "${selectedGameConfig.name}" за ${priceInTon} TON?`,
-                buttons: [
-                    {id: 'confirm', type: 'default', text: '✅ Оплатить'},
-                    {id: 'cancel', type: 'cancel', text: 'Отмена'}
-                ]
+                title: 'Подтверждение',
+                message: `Вывести ${amount} ⭐?`,
+                buttons: [{id:'confirm',type:'default',text:'✅ Да'},{id:'cancel',type:'cancel',text:'Отмена'}]
             }, async (buttonId) => {
                 if (buttonId === 'confirm') {
-                    buyTonBtn.disabled = true;
-                    buyTonBtn.textContent = '⏳ Оплата...';
-                    
                     try {
-                        const transaction = {
-                            validUntil: Math.floor(Date.now() / 1000) + 600,
-                            messages: [
-                                {
-                                    address: "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO",
-                                    amount: (parseFloat(priceInTon) * 1000000000).toString(),
-                                }
-                            ]
-                        };
-                        
-                        const result = await tonConnectUI.sendTransaction(transaction);
-                        console.log('Transaction sent:', result);
-                        
-                        const response = await fetch('/api/payment/ton/confirm', {
+                        const response = await fetch('/api/withdraw/request', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                user_id: userId,
-                                game_id: currentGameId,
-                                game_type: selectedGameType,
-                                tx_hash: result.boc || 'test_hash_' + Date.now()
-                            })
+                            body: JSON.stringify({ user_id: userId, amount: amount })
                         });
-                        
                         const data = await response.json();
-                        console.log('Server response:', data);
-                        
                         if (data.success) {
-                            tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
-                            hasTicket = true;
-                            buyTicketBtn.style.display = 'none';
-                            buyTonBtn.style.display = 'none';
-                            await refreshGameState();
+                            tg.showAlert(data.message);
+                            await loadBalance();
+                            await loadWithdrawHistory();
+                            document.getElementById('withdraw-amount').value = '';
+                            closeWithdrawModal();
                         } else {
-                            tg.showAlert('❌ Ошибка: ' + (data.error || 'Попробуйте ещё раз'));
-                            buyTonBtn.disabled = false;
-                            buyTonBtn.textContent = `💎 Купить за ${priceInTon} TON`;
+                            tg.showAlert('❌ ' + (data.error || 'Ошибка'));
                         }
-                        
-                    } catch(e) {
-                        console.error('TON payment error:', e);
-                        tg.showAlert('❌ Ошибка при оплате: ' + e.message);
-                        buyTonBtn.disabled = false;
-                        buyTonBtn.textContent = `💎 Купить за ${priceInTon} TON`;
-                    }
+                    } catch(e) { tg.showAlert('❌ Ошибка'); }
                 }
             });
         }
         
-        // ========== ВЫБОР ИГРЫ ==========
-        function displayGames() {
-            gamesList.innerHTML = '';
-            const order = ['mini', 'standard', 'vip', 'duel'];
-            
-            for (const key of order) {
-                const config = GAME_TYPES[key];
-                const card = document.createElement('div');
-                card.className = `game-card ${key}`;
-                card.innerHTML = `
-                    <div class="game-header">
-                        <span class="game-title">${config.emoji} ${config.name}</span>
-                        <span class="game-price">${config.ticket_price} ⭐</span>
-                    </div>
-                    <div class="game-stats">
-                        <div>👥 ${config.max_players} игроков</div>
-                        <div>⏱️ ${config.duration} сек</div>
-                        <div>🏆 ${config.prize_pool} ⭐</div>
-                    </div>
-                    <button class="join-btn">Выбрать</button>
-                `;
-                
-                const btn = card.querySelector('.join-btn');
-                btn.onclick = () => selectGame(key, config);
-                gamesList.appendChild(card);
-            }
+        const withdrawModal = document.getElementById('withdraw-modal');
+        const withdrawBtn = document.getElementById('withdraw-btn');
+        
+        function openWithdrawModal() {
+            withdrawModal.classList.add('active');
+            document.getElementById('withdraw-balance').textContent = `${currentBalance} ⭐`;
+            loadWithdrawHistory();
+            const amountInput = document.getElementById('withdraw-amount');
+            const netSpan = document.getElementById('withdraw-net');
+            amountInput.oninput = () => { netSpan.textContent = `${parseInt(amountInput.value) || 0} ⭐`; };
         }
         
-        async function selectGame(type, config) {
-            selectedGameType = type;
-            selectedGameConfig = config;
-            currentGameId = Date.now();
-            
-            selectorScreen.classList.add('hide');
-            gameScreen.classList.add('active');
-            
-            maxPlayersSpan.textContent = config.max_players;
-            prizePoolSpan.textContent = config.prize_pool;
-            timeLeft = config.duration;
-            timerSpan.textContent = `⏱️ ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`;
-            
-            score = 0;
-            scoreSpan.textContent = '0';
-            gameActive = false;
-            gameStarted = false;
-            hasTicket = false;
-            gameStatusSpan.className = 'game-status waiting';
-            gameStatusSpan.innerHTML = '⏳ Ожидание игроков...';
-            tapArea.style.opacity = '1';
-            tapArea.style.pointerEvents = 'auto';
-            
-            buyTicketBtn.style.display = 'block';
-            buyTicketBtn.disabled = true;
-            buyTicketBtn.textContent = '🎫 Купить билет (временно недоступно)';
-            buyTonBtn.style.display = 'block';
-            buyTonBtn.textContent = `💎 Купить за ${getTonPrice(config.ticket_price)} TON`;
-            buyTonBtn.disabled = false;
-            
-            if (playersInterval) clearInterval(playersInterval);
-            if (timerInterval) clearInterval(timerInterval);
-            
-            await checkUserTicket();
-            await startWaiting();
-        }
+        function closeWithdrawModal() { withdrawModal.classList.remove('active'); }
         
-        // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
-        tapArea.addEventListener('click', () => {
+        if (withdrawBtn) withdrawBtn.onclick = openWithdrawModal;
+        document.getElementById('withdraw-modal-close').onclick = closeWithdrawModal;
+        document.getElementById('submit-withdraw-btn').onclick = requestWithdraw;
+        withdrawModal.onclick = (e) => { if (e.target === withdrawModal) closeWithdrawModal(); };
+        
+        tapArea.addEventListener('click', (e) => {
             if (!gameActive) return;
-            
             score++;
             scoreSpan.textContent = score;
-            
-            tapArea.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                tapArea.style.transform = 'scale(1)';
-            }, 100);
+            playTapSound();
+            const rect = tapArea.getBoundingClientRect();
+            createFloatingScore(rect.left + rect.width/2, rect.top + rect.height/2);
+            if (score % 10 === 0) {
+                fetch('/api/update-score', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, username: username, full_name: fullName, score: score })
+                }).catch(e => console.error);
+            }
         });
         
         backBtn.onclick = () => {
             if (timerInterval) clearInterval(timerInterval);
-            if (playersInterval) clearInterval(playersInterval);
-            gameActive = false;
-            gameStarted = false;
-            score = 0;
+            if (updateGameInfoInterval) clearInterval(updateGameInfoInterval);
+            gameActive = false; gameStarted = false; score = 0; scoreSpan.textContent = '0';
             selectorScreen.classList.remove('hide');
             gameScreen.classList.remove('active');
-            loadLeaderboard();
+            loadGameTypes();
         };
         
-        tonConnectBtn.onclick = connectTonWallet;
-        buyTonBtn.onclick = buyTicketWithTon;
+        document.body.addEventListener('click', () => { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); });
         
-        // ========== ЗАПУСК ==========
-        initTonConnect();
-        displayGames();
-        loadLeaderboard();
+        // Инициализация
+        loadGameTypes();
         loadBalance();
-        setInterval(loadLeaderboard, 5000);
+        initTonConnect();
+        setInterval(getLeaderboard, 3000);
         setInterval(loadBalance, 10000);
-        
-        console.log('🚀 Tap Wars загружен!');
     </script>
 </body>
 </html>
