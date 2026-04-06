@@ -302,37 +302,31 @@
         let tonWalletAddress = null;
         
         function initTonConnect() {
-            try {
-                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                    buttonRootId: 'ton-connect-btn'
-                });
-                
-                tonConnectUI.onStatusChange((wallet) => {
-                    if (wallet) {
-                        tonWalletAddress = wallet.account.address;
-                        document.getElementById('ton-connect-btn').textContent = '✅ Кошелёк подключён';
-                        console.log('TON Wallet connected:', tonWalletAddress);
-                    } else {
-                        tonWalletAddress = null;
-                        document.getElementById('ton-connect-btn').textContent = '🔗 TON Wallet';
-                    }
-                });
-            } catch(e) {
-                console.error('TON Connect init error:', e);
-            }
-        }
+    try {
+        // Упрощённая инициализация без манифеста
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            buttonRootId: 'ton-connect-btn'
+        });
         
-        async function connectTonWallet() {
-            if (!tonConnectUI) {
-                initTonConnect();
-            }
-            try {
-                await tonConnectUI.openModal();
-            } catch(e) {
-                console.error('Connect error:', e);
-                tg.showAlert('❌ Ошибка подключения кошелька');
-            }
-        }
+        // Не ждём статус, просто подключаем
+        console.log('TON Connect initialized');
+    } catch(e) {
+        console.error('TON Connect init error:', e);
+    }
+}
+
+async function connectTonWallet() {
+    if (!tonConnectUI) {
+        initTonConnect();
+    }
+    try {
+        // Прямой вызов подключения
+        await tonConnectUI.openModal();
+    } catch(e) {
+        console.error('Connect error:', e);
+        tg.showAlert('❌ Ошибка подключения кошелька: ' + e.message);
+    }
+}
         
         // ========== ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ==========
         const userId = tg.initDataUnsafe?.user?.id || Math.floor(Math.random() * 10000);
