@@ -288,6 +288,33 @@ async def create_invoice(request: Request):
         print(f"Error creating invoice: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/payment/ton/create-invoice")
+async def create_ton_invoice(request: Request):
+    """Создать инвойс для TON оплаты"""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        game_id = data.get("game_id")
+        game_type = data.get("game_type")
+        amount_stars = data.get("amount", 10)
+        
+        # Конвертируем звезды в TON (примерный курс: 700⭐ = 1 TON)
+        amount_ton = amount_stars / 700
+        amount_nano = int(amount_ton * 1000000000)
+        
+        # Здесь можно создать реальный инвойс в TON
+        # Пока возвращаем тестовые данные
+        return {
+            "success": True,
+            "merchant_address": "UQDtz12Jd0KUWpfN6DSy1bE7NOP4Bd9ha8SVAhyJw1umgFnO",
+            "amount_nano": str(amount_nano),
+            "amount_ton": amount_ton,
+            "amount_stars": amount_stars
+        }
+    except Exception as e:
+        print(f"Error creating TON invoice: {e}")
+        return {"success": False, "error": str(e)}
+
 # ========== API TON ПЛАТЕЖЕЙ ==========
 
 @app.post("/api/payment/ton/confirm")
