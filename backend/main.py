@@ -288,6 +288,8 @@ async def create_invoice(request: Request):
         print(f"Error creating invoice: {e}")
         return {"success": False, "error": str(e)}
 
+# ========== API TON ПЛАТЕЖЕЙ ==========
+
 @app.post("/api/payment/ton/confirm")
 async def confirm_ton_payment(request: Request):
     """Подтверждение оплаты через TON"""
@@ -298,42 +300,25 @@ async def confirm_ton_payment(request: Request):
         game_type = data.get("game_type")
         tx_hash = data.get("tx_hash")
         
-        print(f"💰 TON payment confirmation: user={user_id}, game={game_id}, type={game_type}")
+        print(f"💰 TON payment: user={user_id}, game={game_id}, type={game_type}, tx={tx_hash}")
         
         # Добавляем билет пользователю
         await db.add_ticket(user_id, game_type, 1)
         print(f"✅ Ticket added for user {user_id}")
         
-        # Получаем актуальную игру (если game_id не актуален)
-        current_game = await db.get_active_game(game_type)
-        if not current_game:
-            # Создаём новую игру нужного типа
-            new_game_id = await game_engine.create_new_game(game_type)
-            current_game = await db.get_active_game(game_type)
-            print(f"🎮 Created new game: {new_game_id}")
-        
-        actual_game_id = current_game["game_id"]
-        print(f"🎮 Using game_id: {actual_game_id}")
-        
         # Присоединяем к игре
-        success = await game_engine.join_game(actual_game_id, user_id)
+        success = await game_engine.join_game(game_id, user_id)
         print(f"✅ Join game result: {success}")
         
         if success:
-            # Получаем обновлённое количество игроков
-            players_count = await db.get_game_players_count(actual_game_id)
-            return {
-                "success": True, 
-                "message": "Билет активирован",
-                "game_id": actual_game_id,
-                "players_count": players_count
-            }
+            return {"success": True, "message": "Билет активирован"}
         else:
             return {"success": False, "error": "Не удалось присоединиться к игре"}
             
     except Exception as e:
         print(f"❌ TON payment error: {e}")
         return {"success": False, "error": str(e)}
+        
 # ========== ВЕБХУК ДЛЯ TELEGRAM ==========
 
 @app.post("/webhook")
