@@ -333,23 +333,48 @@ async def confirm_ton_payment(request: Request):
         game_type = data.get("game_type")
         tx_hash = data.get("tx_hash")
         
-        print(f"💰 TON payment: user={user_id}, game={game_id}, type={game_type}, tx={tx_hash}")
+        print(f"💰 TON payment confirmation received:")
+        print(f"   user_id: {user_id}")
+        print(f"   game_id: {game_id}")
+        print(f"   game_type: {game_type}")
+        print(f"   tx_hash: {tx_hash}")
+        
+        # Получаем активную игру нужного типа
+        game = await db.get_active_game(game_type)
+        if not game:
+            # Если нет активной игры - создаём новую
+            new_game_id = await game_engine.create_new_game(game_type)
+            game = await db.get_active_game(game_type)
+            print(f"🎮 Created new game: {new_game_id}")
+        
+        actual_game_id = game["game_id"]
+        print(f"🎮 Using game_id: {actual_game_id}")
         
         # Добавляем билет пользователю
         await db.add_ticket(user_id, game_type, 1)
         print(f"✅ Ticket added for user {user_id}")
         
-        # Присоединяем к игре
-        success = await game_engine.join_game(game_id, user_id)
-        print(f"✅ Join game result: {success}")
+        # ПРИСОЕДИНЯЕМ К ИГРЕ
+        join_success = await game_engine.join_game(actual_game_id, user_id)
+        print(f"✅ Join game result: {join_success}")
         
-        if success:
-            return {"success": True, "message": "Билет активирован"}
+        # Получаем обновлённое количество игроков
+        players_count = await db.get_game_players_count(actual_game_id)
+        
+        if join_success:
+            return {
+                "success": True, 
+                "message": "Билет активирован",
+                "game_id": actual_game_id,
+                "players_count": players_count
+            }
         else:
             return {"success": False, "error": "Не удалось присоединиться к игре"}
             
     except Exception as e:
         print(f"❌ TON payment error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e)}
         
 # ========== ВЕБХУК ДЛЯ TELEGRAM ==========
