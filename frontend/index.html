@@ -933,19 +933,32 @@
             }
         }
         
-        async function joinGame() {
-            try {
-                const response = await fetch(`/api/game/${currentGameId}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: userId })
-                });
-                const data = await response.json();
-                if (data.success && data.players_count >= selectedGameConfig.max_players && !gameStarted) {
-                    startGame();
-                }
-            } catch(e) { console.error(e); }
+        async function forceJoinGame() {
+    try {
+        const response = await fetch(`/api/game/${currentGameId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        const data = await response.json();
+        console.log('Force join result:', data);
+        
+        if (data.success) {
+            console.log('✅ Successfully joined game');
+            await refreshGameState();
+            
+            const game = await refreshGameState();
+            if (game && game.players_count >= game.max_players && !gameStarted) {
+                startGame();
+            }
+        } else {
+            console.error('Failed to join game:', data.error);
         }
+    } catch(e) {
+        console.error('Force join error:', e);
+    }
+}
+                        
         
         function startGame() {
             gameActive = true;
