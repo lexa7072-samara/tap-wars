@@ -598,23 +598,27 @@
                         const data = await response.json();
                         
                         if (data.success) {
-                            tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
-                            hasTicket = true;
-                            buyTicketBtn.style.display = 'none';
-                            buyTonBtn.style.display = 'none';
-                            tapArea.style.opacity = '1';
-                            tapArea.style.pointerEvents = 'auto';
-                            await joinGame();
-                        } else {
-                            tg.showAlert('❌ Ошибка: ' + (data.error || 'Не удалось подтвердить оплату'));
-                        }
-                    } catch(e) {
-                        console.error('TON payment error:', e);
-                        tg.showAlert('❌ Ошибка при оплате TON');
-                    }
-                }
-            });
-        }
+    tg.showAlert('✅ Билет куплен! Присоединяем к игре...');
+    hasTicket = true;
+    buyTicketBtn.style.display = 'none';
+    buyTonBtn.style.display = 'none';
+    
+    // Обновляем game_id и количество игроков
+    if (data.game_id) {
+        currentGameId = data.game_id;
+    }
+    if (data.players_count) {
+        playersCountSpan.textContent = data.players_count;
+    }
+    
+    // Принудительно присоединяемся к игре
+    await forceJoinGame();
+    
+} else {
+    tg.showAlert('❌ Ошибка: ' + (data.error || 'Попробуйте ещё раз'));
+    buyTonBtn.disabled = false;
+    buyTonBtn.textContent = `💎 Купить за ${priceInTon} TON`;
+}
         
         // Звуковые эффекты (как в предыдущей версии)
         let soundEnabled = true;
